@@ -36,7 +36,7 @@ L2 encryption and are defined in future service specifications.
 | PairingKey | `4f434352-0001-0002-1845-000000000000` | Write | None (L1) | App writes 6-byte pairing key here |
 | PairingResult | `4f434352-0001-0003-1845-000000000000` | Read + Notify | None (L1) | Result of most recent pairing attempt |
 
-See `../packets/README.md` for byte-precise payload formats.
+See `packets.md` for byte-precise payload formats.
 
 ### DeviceInfo
 
@@ -55,7 +55,7 @@ name; it is not derivable from any information visible in the BLE advertising pa
 (e.g., the device name suffix or any characteristic readable before pairing).
 
 Incorrect keys increment a per-connection failure counter. Three consecutive failures
-trigger a 30-second lockout (see `../discovery/README.md`).
+trigger a 30-second lockout (see `discovery.md`).
 
 ### PairingResult
 
@@ -74,8 +74,37 @@ Result codes:
 | FAIL_BONDING | `0x04` | SMP bonding step failed; retry permitted |
 | FAIL_ALREADY_PAIRED | `0x05` | Device already bonded; no action taken |
 
+## Capability Service
+
+**Service UUID**: `4f434352-0002-0000-1845-000000000000`
+
+Exposes a single read-only characteristic that describes all hardware modules
+attached to the MCU. The companion app reads this characteristic once after bonding
+and uses the result to enable or disable UI features.
+
+Capabilities are static for the lifetime of the connection (detected at MCU boot,
+never change during a dive). No `Notify` property is provided.
+
+| Characteristic | UUID | Properties | Auth | Length | Description |
+|---|---|---|---|---|---|
+| CapabilityDescriptor | `4f434352-0002-0001-1845-000000000000` | Read | L2 (bonded) | 8 + N×variable | Full hardware capability blob |
+
+See `packets.md` for byte-precise payload format and `capabilities.md`
+for the capability data model, feature enablement matrix, and exchange process.
+
+### CapabilityDescriptor
+
+Read-only. Available to bonded connections only (L2). If the payload exceeds
+`ATT_MTU − 1` bytes, the ATT Long Read procedure (`Read Blob Request`) must be used.
+Firmware SHOULD negotiate MTU ≥ 128 bytes. Companion app SHOULD request MTU ≥ 128
+at connection time (`CONFIG_BT_L2CAP_TX_MTU` on Zephyr).
+
+Typical payload size for a standard CCR build (3 O₂ cells, 1 solenoid, 1 depth sensor,
+1 barometric sensor, 1 CO₂ temp stick, 1 general screen): approximately 56 bytes,
+well within a single ATT packet at default MTU.
+
 ## Future Services
 
-Data services (PO₂, alarms, configuration, logs) are out of scope for this revision.
-They will use the same UUID namespace with a different SSSS selector and will require
-L2 encryption.
+Data services (ppO₂ streaming, alarms, configuration, dive logs) are out of scope
+for this revision. They will use the same UUID namespace with a different SSSS selector
+and will require L2 encryption.

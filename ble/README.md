@@ -7,14 +7,14 @@ This directory defines the BLE protocols used between openCCR firmware and the c
 
 ## Scope
 
-Two protocol families are defined here:
-
-| Family | Directory | Purpose |
+| Topic | File | Purpose |
 |---|---|---|
-| Discovery & Pairing | `discovery/` | Advertising, scanning, and the two-phase pairing handshake |
-| GATT Services | `services/` and `packets/` | Characteristic definitions and wire-format payloads |
+| Discovery & Pairing | `discovery.md` | Advertising, scanning, and the two-phase pairing handshake |
+| GATT Services | `services.md` | Characteristic definitions for all services |
+| Packet Formats | `packets.md` | Byte-precise wire-format payloads |
+| Capability Model | `capabilities.md` | Hardware capability data model and feature enablement matrix |
 
-Only the Device Service (pairing infrastructure) is defined in this revision. Dive-data services (PO₂, alarms, etc.) are out of scope and will be specified separately.
+Two services are defined in this revision: the Device Service (pairing) and the Capability Service (hardware module inventory). Dive-data services (ppO₂ streaming, alarms, logs) are out of scope and will be specified separately.
 
 ## Firmware Stack
 
@@ -66,15 +66,13 @@ primary advertising PDU can carry at most 26 characters; if the stored name is l
 firmware advertises the first 26 characters. The full name is readable via the Generic
 Access Profile `Device Name` characteristic after connecting.
 
-## Directory Structure
+## Files
 
 ```
 ble/
-├── README.md            ← this file
-├── discovery/
-│   └── README.md        ← advertising layout, pairing state machine, scan behavior
-├── services/
-│   └── README.md        ← GATT service and characteristic table
-└── packets/
-    └── README.md        ← byte-precise payload specifications
+├── README.md        ← this file
+├── discovery.md     ← advertising layout, pairing state machine, scan behavior
+├── services.md      ← GATT service and characteristic table
+├── packets.md       ← byte-precise payload specifications
+└── capabilities.md  ← hardware capability model and feature enablement matrix
 ```
