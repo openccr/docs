@@ -5,20 +5,58 @@ Copyright (c) 2026 openCCR contributors
 
 ## Frame
 
-`openccr_telemetry_frame_t` is an 8-byte payload:
+A scalar telemetry frame is an eight-byte payload that carries one current
+value from one logical publisher. Its fields separate stream identity,
+loss detection, value status, and value interpretation:
 
 | Offset | Length | Type | Meaning |
 |---:|---:|---|---|
-| 0 | 1 | `uint8_t` | `publisher_id`; unique stream ID |
-| 1 | 1 | `uint8_t` | `sequence_id`; wraps at 255 and detects drops |
-| 2 | 1 | `uint8_t` | `status_flags` |
-| 3 | 1 | `uint8_t` | `context`; scalar code or packed tissue context |
-| 4 | 4 | union | Dynamic value |
+| 0 | 1 | `uint8_t` | `publisher_id`; node-local logical stream identifier |
+| 1 | 1 | `uint8_t` | `sequence_id`; wrapping emission sequence for drop detection |
+| 2 | 1 | `uint8_t` | `status_flags`; validity and alarm state |
+| 3 | 1 | `uint8_t` | `context`; selects the value's meaning and representation |
+| 4 | 4 | `uint8_t[4]` | Context-selected value bytes |
+
+The fixed four-byte value area keeps every scalar emission within one
+Classic CAN payload while allowing the context registry to choose the
+representation. The frame does not carry a unit or a manifest resource ID;
+the inventory output descriptor supplies the publisher's meaning, unit,
+origin, and any structured shape.
 
 Telemetry uses `CAN_ID = (0x07 << 7) | source_node_id` (`0x381–0x3FF`).
-`publisher_id` is an 8-bit node-local logical publisher; stream identity is
-`(session, source_node_id, hardware_uuid, publisher_id)`. Receivers require
-the source's current confirmed mapping before decoding or sequencing a frame.
+`publisher_id` is an 8-bit node-local logical publisher. On the wire, stream
+identity remains `(source_node_id, publisher_id)`; receiver-local transport
+state is additionally bound to the current `identity_generation` for that
+source node ID. A receiver MUST apply the [profile frame gate](../profile.md)
+before decoding or sequencing a frame.
+
+## Manifest binding and descriptor acceptance
+
+Before decoding, sequencing, assembling, or exposing telemetry, a receiver
+MUST have a complete validated manifest currently bound to the source node ID's
+hardware UUID and `identity_generation`, with the current
+`manifest_revision` and `manifest_fingerprint`. A matching validated cache
+entry activated from the current advertisement satisfies this requirement; an
+advertisement without a validated manifest does not. If no such manifest is
+available, the receiver MUST discard the telemetry frame.
+
+The receiver MUST resolve the frame's `publisher_id` in that manifest. A scalar
+frame is acceptable only when its `context` and value representation match the
+publisher's output descriptor. A structured snapshot is acceptable only when
+its format, encoded length, element representation, and shape match the
+descriptor. A frame for an unknown publisher or a mismatching descriptor MUST
+be discarded.
+
+Frames discarded by this gate MUST NOT advance sequence state, create a
+baseline, count as drops, or create an incomplete structured snapshot. The
+receiver resumes normal sequencing only after the manifest is validated and
+active.
+
+`publisher_id` values are node-local `0x00–0xFF`; a node may therefore expose
+at most 256 distinct logical publishers in the v0.1 telemetry namespace.
+Publisher IDs are not network-global and are unrelated to manifest
+`resource_id` values. A resource may expose multiple publishers, and a
+structured publisher may represent many scalar elements.
 
 `status_flags`:
 
@@ -32,24 +70,112 @@ the source's current confirmed mapping before decoding or sequencing a frame.
 A frame with any reserved `status_flags` bit set is invalid and is discarded
 without advancing sequence state.
 
-Union alternatives are `float f32`, `int32_t i32`, `uint32_t u32`,
-`uint8_t boolean`, `rebus_packed_gf_u8_t`, `rebus_tissue_pair_u16_t`, and
-`rebus_tissue_quad_u8_t`. The context rules in this document select exactly one
-representation; receivers must not infer it from host ABI or payload value.
+The four value bytes can encode binary32, signed or unsigned 32-bit
+integers, a Boolean, packed gradient factors, four packed tissue saturation
+values, or one packed tissue-gas pair. Context rules in this document select
+exactly one representation; receivers must not infer it from host ABI or
+payload value.
 
-`publisher_id` is stable for one logical publisher through the session and
-MUST NOT be reassigned in-session. The [capability-announcement
-process](role-announce.md#capability-announcement-process) creates a node-wide
-telemetry epoch: every local publisher's first frame after its 1,000-ms hold
-uses sequence zero, then increments modulo 256.
+`publisher_id` is stable for one logical publisher while its source node remains
+`ACTIVE` and MUST NOT be reassigned during that period. The active-entry
+manifest-advertisement sequence creates a node-wide telemetry generation:
+every local publisher's first scalar frame and first structured snapshot after
+the 1,000-ms hold uses sequence zero, then scalar `sequence_id` and structured
+`snapshot_sequence` advance independently modulo 256.
 
-For each stream, absence of a last accepted sequence value means that the next
-valid frame is a baseline and is accepted regardless of its `sequence_id`. A
+After the manifest binding and descriptor gate passes, each
+`(source_node_id, publisher_id, identity_generation)` stream is processed as
+follows. Absence of a last accepted sequence value means that the next valid
+scalar frame is a baseline and is accepted regardless of its `sequence_id`. A
 conforming publisher's first baseline is zero, but a receiver can miss it.
 Otherwise, with `advance = received - last` as `uint8_t`, accept `1..127`
-(report `advance - 1` drops), discard `0` as duplicate, and discard `128..255`
-as stale. An accepted role announcement clears sequence state for every
-publisher from that node; silence does not.
+(`report advance - 1 drops`), discard `0` as duplicate, and discard `128..255`
+as stale. Each valid manifest advertisement clears scalar sequence state and
+incomplete structured snapshot state for its source. The next valid frame from
+each publisher is therefore a new baseline. A discovery UUID remap also
+discards all sequence state from the prior identity generation. Silence does
+not clear sequence state.
+
+Structured snapshot ordering uses the same modulo comparison explicitly. A
+source increments `snapshot_sequence` exactly once when it generates a new
+logical snapshot; every chunk of that snapshot carries the same value. The
+source MUST increment it modulo 256, including the `0xFF` to `0x00` wrap, and
+MUST NOT reset it or reuse a value except as required by that modulo wrap
+within the same active identity generation. Reusing sequence zero is otherwise
+permitted only at the active-entry reset or after a UUID-binding reset.
+
+For each structured stream, a receiver tracks the last committed sequence and
+at most one pending assembly. If neither exists, the first valid chunk starts a
+pending baseline and the first complete valid snapshot is accepted regardless
+of its sequence. If a pending assembly exists, a chunk with its sequence may
+arrive in any order. A different sequence is compared against the pending
+sequence using `advance = received - pending` as `uint8_t`: `1..127` is newer
+and supersedes the pending assembly, `0` is a duplicate, and `128..255` is
+stale. After a snapshot is committed, the same comparison is made against the
+last committed sequence. Sequence state advances only when all chunks pass
+validation and the snapshot is committed. This makes a completed snapshot
+authoritative without exposing a partial value or allowing late chunks from an
+older snapshot to roll state back.
+
+The modulo comparison is unambiguous only within a forward distance of 127
+snapshots. If a receiver misses 128 or more logical snapshots, it follows the
+defined stale/duplicate result until a reset boundary is observed; v0.1 has no
+separate structured-snapshot reset message. A valid manifest advertisement
+clears the committed sequence and any pending assembly, and a discovery UUID
+remap does the same for the prior identity generation.
+
+## Structured telemetry snapshots
+
+Structured outputs declared by the inventory manifest use
+`CAN_ID = (0x08 << 7) | source_node_id` (`0x401–0x47F`). This class is
+deliberately lower arbitration priority than scalar telemetry. A structured
+snapshot chunk is an eight-byte payload:
+
+| Offset | Length | Type | Meaning |
+|---:|---:|---|---|
+| 0 | 1 | `uint8_t` | `publisher_id` |
+| 1 | 1 | `uint8_t` | `snapshot_sequence`; source-local generation |
+| 2 | 1 | `uint8_t` | `chunk_index`; zero-based |
+| 3 | 1 | `uint8_t` | `chunk_count`; `1..255` |
+| 4 | 4 | `uint8_t[4]` | Logical snapshot bytes at this chunk offset |
+
+`chunk_index` MUST be less than `chunk_count`. The maximum logical snapshot
+length is 1,020 bytes. The inventory output descriptor supplies the exact
+encoded length, shape, element type, and dimension semantics. Unused bytes in
+the final four-byte chunk MUST be zero and are not part of the logical value.
+
+The logical snapshot begins with a four-byte snapshot header:
+
+| Offset | Length | Type | Meaning |
+|---:|---:|---|---|
+| 0 | 1 | `uint8_t` | Snapshot format; `0x01` |
+| 1 | 1 | `uint8_t` | Status flags; same valid/warning/alarm bits as scalar telemetry |
+| 2 | 2 | `uint16_t` | Reserved; must be zero |
+
+The encoded value follows the header. A receiver MUST commit a structured
+snapshot only after every chunk for one `(source_node_id, publisher_id,
+snapshot_sequence)` has arrived and the assembled length, format, element
+representation, and shape match the active publisher descriptor in the
+verified manifest. It MUST accept chunks in any order, but MUST NOT commit an
+incomplete snapshot and MUST discard a conflicting duplicate chunk or a
+snapshot whose sequence is duplicate or stale under the ordering rule above. A
+newer sequence supersedes and discards an incomplete older snapshot. It MUST
+NOT expose a partially assembled matrix or array as current state.
+
+Structured snapshots have no application-level retransmission or negative
+acknowledgement. CAN controller error recovery remains subject to the normal
+physical-frame retransmission rules. A receiver that misses or discards a
+snapshot may issue a current-state request; the source produces a new snapshot
+if its delivery policy permits and MUST NOT replay the missing historical
+snapshot. A response that is a new logical snapshot receives the next
+`snapshot_sequence`; all chunks in the response retain that value.
+
+`snapshot_sequence` is independent of scalar `sequence_id`. Its sender
+lifecycle, wrap behavior, modulo ordering, pending-assembly handling, and
+reset boundaries are defined above. A structured snapshot request and its
+response are rate-limited according to the output's manifest
+`delivery_class` and request policy. A source MAY defer, coalesce, or
+silently ignore requests, especially for advisory or diagnostic outputs.
 
 For scalar contexts, the context registry selects the sole representation but
 does not assign a unit. Boolean values use bytes `b0,00,00,00`, where `b0`
@@ -79,8 +205,6 @@ they do not map a scalar context to a canonical unit. Unit words in the context
 registry describe source intent only. Until the per-context unit mapping and
 numeric range are assigned, a receiver MUST NOT convert a scalar value or infer
 its unit from its numeric value.
-
-
 | Value | Symbol | Meaning |
 |---:|---|---|
 | `0x00` | `UNIT_RAW` | Raw counts, packed bytes, or dimensionless |
@@ -174,6 +298,106 @@ Gas kinds use two little-endian whole-millibar `uint16_t` values at even
 indexes `0..14`. No other tissue context is valid; context selects pair versus
 quad and no optional mode exists.
 
+The legacy tissue contexts do not represent every structured tissue result.
+They are limited to 16 compartments and do not provide a gas selector for
+multiple saturation matrices. A decompression result such as four gas
+saturation values across 16 or 32 tissues MUST use a manifest-declared
+`STRUCTURED_SNAPSHOT`; it MUST NOT be coerced into an unrelated scalar or
+legacy tissue context.
+
+## Telemetry control
+
+Telemetry-control messages request a current value or a temporary higher
+cadence for one exact telemetry selector. They never request retransmission:
+a missing measurement remains missing, and a snapshot reports the source's
+current cached value rather than an earlier frame.
+
+### Frames and payload
+
+A request uses `CAN_ID = (0x03 << 7) | requester_node_id`
+(`0x181–0x1FF`); its low bits name the requester. Its 8-byte payload is:
+
+| Offset | Length | Type | Meaning |
+|---:|---:|---|---|
+| 0 | 1 | `uint8_t` | Request opcode |
+| 1 | 1 | `uint8_t` | Target source node ID |
+| 2 | 1 | `uint8_t` | `publisher_id` |
+| 3 | 1 | `uint8_t` | `context` |
+| 4 | 2 | `uint16_t` | Requested period in milliseconds |
+| 6 | 2 | `uint16_t` | Requested duration in seconds |
+
+All `uint16_t` fields are little-endian. The request target discards a frame
+unless the requester node ID is in `0x01–0x7F` and byte 1 equals its own
+active node ID. The selector is `(source_node_id, publisher_id, context)`;
+no UUID appears in the payload.
+
+| Request opcode | Symbol | Fields 4–7 |
+|---:|---|---|
+| `0x01` | `TCTRL_SNAPSHOT_REQUEST` | all zero |
+| `0x02` | `TCTRL_RATE_LEASE_REQUEST` | period and duration |
+
+Unknown opcodes, nonzero snapshot fields, invalid node IDs, invalid contexts,
+and invalid period/duration pairs are discarded without response. A source
+MAY silently ignore any otherwise valid request, including one that fails its
+local access policy, selects an unavailable stream, or exceeds its resource
+limits. Request confirmation and rejection messages are intentionally absent;
+a requester observes only any resulting telemetry.
+
+### Snapshot request
+
+For `TCTRL_SNAPSHOT_REQUEST`, a source MAY enqueue the latest current value
+for the exact selector. A scalar output produces one scalar telemetry frame; a
+`STRUCTURED_SNAPSHOT` output produces one fresh structured snapshot made of
+the required chunks. The source MUST NOT replay an older missing frame or
+snapshot and MUST NOT invent a sample.
+
+A source without a current cached value, available snapshot-frame budget, or
+willingness to serve the request emits no response. A request for a
+structured snapshot is not a retransmission request: the source creates a new
+snapshot sequence when it honors the request.
+
+A source MUST process requests according to the selected output's manifest
+`delivery_class` and `minimum_request_interval_ms`, subject to stricter
+source-wide bus and resource limits. It MAY defer, coalesce, rate-limit, or
+silently ignore requests. A requester observes only resulting telemetry and
+must treat an incomplete structured snapshot as unavailable.
+
+### Temporary rate lease
+
+`TCTRL_RATE_LEASE_REQUEST` has one of these valid field pairs:
+
+| Requested period | Requested duration | Meaning |
+|---:|---:|---|
+| `200–60,000` ms | `1–60` s | Request a temporary cadence no slower than the period |
+| `0` | `0` | Cancel this requester's lease for the selector |
+
+A nonzero period is a requested maximum telemetry interval, so `200` ms
+requests 5 Hz. A source MAY honor a lease only if it can emit the selected
+stream no slower than the requested interval for the full requested duration.
+It sends no acceptance or rejection message. A processed cancellation removes
+this requester's lease if one exists. A source that cannot honor a request
+silently ignores it.
+
+The source stores each lease by requester node ID, the requester identity
+generation currently associated with that ID, publisher ID, and context. If no
+UUID is currently bound to the requester ID, the source uses the explicit
+unbound generation sentinel. A new valid lease request from that requester for
+the same selector replaces its prior lease; expiry removes it. When discovery
+binds or changes the UUID for a requester node ID, the source MUST revoke that
+requester's leases from the prior generation, including the unbound
+generation, before accepting new state for the replacement.
+While one or more leases select a stream, the source emits one stream at the
+fastest active effective cadence, never one copy per requester. When the final
+lease expires or is cancelled, its normal cadence resumes.
+
+To bound rate-control load, a source MUST NOT honor a lease that would
+increase its aggregate telemetry schedule by more than five frames per second
+above its normal schedule. It MUST also process at most one rate-lease request
+per requester and selector per second; further requests in that interval are
+discarded without response. These limits apply independently of any faster
+normal cadence and do not guarantee delivery through CAN arbitration or bus
+faults.
+
 ## Subscription lifecycle
 
 Rebus v0.1 assigns no telemetry-subscribe or telemetry-unsubscribe CAN
@@ -182,22 +406,22 @@ subscription is receiver-local: it never changes a publisher's role
 announcement, telemetry cadence, frame contents, or bus traffic.
 
 An active subscription selects exactly one current stream context:
-`(session, source_node_id, hardware_uuid, publisher_id, context)`. The source
-tuple MUST resolve to the receiver's current `CONFIRMED` mapping, and `context`
-MUST be valid under this document. A consumer that needs several streams or
-contexts registers one subscription per exact selector.
+`(source_node_id, publisher_id, context)` and is bound locally to the current
+`identity_generation` for that source node ID. `source_node_id` MUST be in
+`0x01–0x7F`, and `context` MUST be valid under this document. A consumer that
+needs several streams or contexts registers one subscription per exact
+selector.
 
 ### Subscribe process
 
-1. Resolve the requested source tuple against the current confirmed mapping and
-   validate the selected context. If no matching confirmed mapping exists, do
-   not create an active subscription.
-2. Store the exact selector. This creates no CAN frame and does not alter
-   shared capability or sequence state.
+1. Validate the source node-ID range and selected context.
+2. Resolve the source node ID to its current identity generation and store the
+   exact selector with that generation. This creates no CAN frame and does not
+   alter shared capability or sequence state.
 3. Apply the profile frame gate, telemetry payload validation, and per-stream
    sequence processing before evaluating any subscription. For each accepted
    frame, deliver its value and status only to active selectors that exactly
-   match its stream and context.
+   match its stream, context, and current identity generation.
 
 The receiver processes sequence state once per accepted stream, not once per
 subscriber. A subscription begins with future accepted frames only; it neither
@@ -210,7 +434,8 @@ replays an earlier value nor makes a missing source publish.
    capability or sequence state.
 3. Send no CAN frame and make no request to the source.
 
-Session reset or source-mapping invalidation ends every active subscription for
-that mapping. An implementation MAY retain a user's subscription intent, but it
-MUST resolve and create a new exact selector before delivering data from a new
-session or mapping.
+An active subscription remains in effect until it is removed or discovery
+changes the UUID bound to its source node ID. A UUID remap removes the
+subscription and its associated requester-bound state; the replacement node
+must be subscribed explicitly. Address reuse therefore cannot inherit or
+recreate the prior selector.

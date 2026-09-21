@@ -9,7 +9,7 @@ assignees: ''
 ## Affected Document and Section
 
 <!-- File path and section heading where the error appears,
-     e.g., "ble/packets/README.md — PO₂ Measurement Packet" -->
+     e.g., "ble/packets.md — PairingKey" -->
 
 ## Incorrect or Missing Content
 

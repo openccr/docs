@@ -5,7 +5,8 @@
 ## Affected Documents / Protocol Areas
 
 <!-- List the documents and protocol areas affected by this change,
-     e.g., "BLE PO₂ packet format — services/ and packets/" or "rebus alarm message — messages/" -->
+     e.g., "BLE PairingKey — ble/services.md and ble/packets.md" or
+     "Rebus claim rejection — rebus/messages/claim-reject.md" -->
 
 ## Checklist
 

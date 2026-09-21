@@ -15,13 +15,15 @@ This is a documentation-only repository. Source code lives in the sibling reposi
 
 ```
 docs/
-├── ble/           # BLE discovery and GATT packet definitions
-│   ├── discovery/ # Advertising, scanning, connection establishment
-│   ├── services/  # GATT service and characteristic definitions
-│   └── packets/   # Packet payload formats
+├── ble/           # BLE protocol specifications
+│   ├── README.md
+│   ├── discovery.md
+│   ├── services.md
+│   ├── packets.md
+│   └── capabilities.md
 ├── rebus/         # Rebus inter-board CAN-bus protocol
 │   ├── profile.md       # Normative wire profile and frame rules
-│   ├── discovery.md     # Node claims, confirmation, and discovery state
+│   ├── discovery.md     # Cooperative node claims, rejection, and recovery
 │   ├── encoding.md      # Payload serialization and byte order
 │   ├── messages/        # Message layouts and registries
 │   ├── design-decisions.md

@@ -19,10 +19,13 @@ assignees: ''
 ## Proposed Coverage
 
 <!-- Initial thoughts on what the new documentation should cover:
-     - Which protocol family (BLE / rebus)?
-     - Which subdirectory (discovery / services / packets / protocol / messages / frames)?
+     - Which protocol family (BLE / Rebus)?
+     - Which current document is closest in scope (for example,
+       `ble/services.md`, `ble/packets.md`, `rebus/profile.md`, or
+       `rebus/messages/`)?
      - What specific messages, packets, or services need to be defined?
-     - Are there existing informal specs (code comments, wire traces, design notes) to reference? -->
+     - Are there existing informal specs (code comments, wire traces, design
+       notes) to reference? -->
 
 ## Safety Considerations
 
