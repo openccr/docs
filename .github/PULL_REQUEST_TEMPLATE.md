@@ -5,7 +5,7 @@
 ## Affected Documents / Protocol Areas
 
 <!-- List the documents and protocol areas affected by this change,
-     e.g., "BLE PO₂ packet format — services/ and packets/" or "CCRAN alarm message — messages/" -->
+     e.g., "BLE PO₂ packet format — services/ and packets/" or "rebus alarm message — messages/" -->
 
 ## Checklist
 
@@ -20,7 +20,7 @@
 
 ### Safety (complete if applicable)
 - [ ] Safety impact noted in PR description below (or N/A for non-safety-relevant changes)
-- [ ] Changes to packet payload formats, alarm definitions, control messages, or CCRAN addressing reviewed by 2+ contributors (names below)
+- [ ] Changes to packet payload formats, alarm definitions, control messages, or rebus addressing reviewed by 2+ contributors (names below)
 
 ### Cross-repository consistency (complete if applicable)
 - [ ] Checked that companion-app and firmware implementations are consistent with this spec change (or noted as a follow-up)
@@ -33,7 +33,7 @@
      - Packet payload formats, field widths, or byte ordering
      - Alarm or alert message definitions
      - Safety-critical control message definitions (setpoint commands, calibration commits, OTA triggers)
-     - CCRAN addressing or arbitration rules
+     - rebus addressing or arbitration rules
 
      Describe what changed and confirm that the updated specification is correct.
 

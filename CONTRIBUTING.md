@@ -6,14 +6,14 @@ We welcome documentation contributions from the community. This document covers 
 
 ## Safety First
 
-**Specification errors are dangerous.** The BLE and CCRAN protocol specifications in this repository are the authoritative reference for firmware and companion-app implementations. An error in a protocol spec can propagate into firmware builds that ship on life-support equipment used during dives.
+**Specification errors are dangerous.** The BLE and rebus protocol specifications in this repository are the authoritative reference for firmware and companion-app implementations. An error in a protocol spec can propagate into firmware builds that ship on life-support equipment used during dives.
 
 - Changes to protocol specifications that could cause incorrect firmware behaviour must include a `[SAFETY]` tag in the PR description.
 - Changes affecting any of the following require review by **at least two contributors** before merge:
   - Packet payload formats, field widths, or byte ordering
   - Alarm or alert message definitions
   - Safety-critical control message definitions (setpoint commands, calibration commits, OTA triggers)
-  - CCRAN addressing or arbitration rules
+  - rebus addressing or arbitration rules
 - Accuracy over style: if a specification is technically correct but awkward to read, fix the readability without changing the semantics. If you are unsure whether a change is semantically equivalent, note it explicitly in the PR.
 
 ---

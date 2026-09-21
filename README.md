@@ -7,7 +7,7 @@ Protocol specifications and technical documentation for the openCCR rebreather p
 This repository covers:
 
 - **BLE protocol** — discovery, GATT service definitions, and packet payload formats for firmware↔companion-app communication
-- **CCRAN protocol** — inter-board CAN-bus protocol specification for intra-firmware communication between openCCR controller boards
+- **rebus protocol** — inter-board CAN-bus protocol specification for intra-firmware communication between openCCR controller boards
 
 This is a documentation-only repository. Source code lives in the sibling repositories listed below.
 
@@ -19,10 +19,13 @@ docs/
 │   ├── discovery/ # Advertising, scanning, connection establishment
 │   ├── services/  # GATT service and characteristic definitions
 │   └── packets/   # Packet payload formats
-├── ccran/         # CCRAN inter-board CAN-bus protocol
-│   ├── protocol/  # Protocol overview, framing, addressing
-│   ├── messages/  # Message type catalogue and payloads
-│   └── frames/    # Low-level frame format and encoding
+├── rebus/         # Rebus inter-board CAN-bus protocol
+│   ├── profile.md       # Normative wire profile and frame rules
+│   ├── discovery.md     # Node claims, confirmation, and discovery state
+│   ├── encoding.md      # Payload serialization and byte order
+│   ├── messages/        # Message layouts and registries
+│   ├── design-decisions.md
+│   └── open-issues.md
 └── licenses/
 ```
 

@@ -8,7 +8,7 @@ companion app. After bonding, the companion app reads a single GATT characterist
 (`CapabilityDescriptor`) and uses the result to enable or disable UI features
 corresponding to physically present hardware modules.
 
-Capabilities are **static at boot**: the MCU enumerates the CCRAN bus on startup,
+Capabilities are **static at boot**: the MCU enumerates the rebus bus on startup,
 detects all attached modules, and builds an in-memory capability record that does
 not change during the dive. The companion app reads capabilities once and caches
 the result for the session.
@@ -20,7 +20,7 @@ the result for the session.
 Announced in the fixed header of `CapabilityDescriptor` (byte 1). Bit-field, uint8.
 
 MCU capability flags express what the MCU can functionally **do**, computed at boot
-from the combination of modules detected on the CCRAN bus. Dependencies are listed
+from the combination of modules detected on the rebus bus. Dependencies are listed
 in the Meaning column; the firmware must only set a flag when all prerequisites are met.
 
 | Bit | Name | Meaning |
@@ -93,7 +93,7 @@ unavailable functionality.
 ```
 Firmware (Peripheral)                    Companion App (Central)
       |                                         |
-      | [boot: enumerate CCRAN bus]             |
+      | [boot: enumerate rebus bus]             |
       | [detect attached modules]               |
       | [build CapabilityDescriptor blob]       |
       | [register Capability Service L2]        |
@@ -113,7 +113,7 @@ Firmware (Peripheral)                    Companion App (Central)
 
 **Step-by-step:**
 
-1. **Boot** — MCU enumerates the CCRAN bus, detects attached modules, and builds an
+1. **Boot** — MCU enumerates the rebus bus, detects attached modules, and builds an
    in-memory capability record. This record does not change while the device is running.
 
 2. **Register** — The Capability Service characteristic is registered at L2

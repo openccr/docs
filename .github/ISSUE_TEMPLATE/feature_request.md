@@ -19,7 +19,7 @@ assignees: ''
 ## Proposed Coverage
 
 <!-- Initial thoughts on what the new documentation should cover:
-     - Which protocol family (BLE / CCRAN)?
+     - Which protocol family (BLE / rebus)?
      - Which subdirectory (discovery / services / packets / protocol / messages / frames)?
      - What specific messages, packets, or services need to be defined?
      - Are there existing informal specs (code comments, wire traces, design notes) to reference? -->

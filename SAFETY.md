@@ -2,7 +2,7 @@
 
 ## Specification Errors Are Dangerous
 
-The openCCR documentation repository contains **authoritative protocol specifications** — BLE packet formats, CCRAN inter-board message definitions, alarm semantics, and control message structures — that firmware and companion-app implementations are built against directly.
+The openCCR documentation repository contains **authoritative protocol specifications** — BLE packet formats, rebus inter-board message definitions, alarm semantics, and control message structures — that firmware and companion-app implementations are built against directly.
 
 A specification error is not merely a documentation defect. If an incorrect spec is used as the reference for a firmware build:
 
@@ -32,7 +32,7 @@ Public reporting is essential because every firmware build derived from this rep
 Select **"Doc error"** and use the `[SAFETY]` title prefix for safety-relevant specification errors, e.g.:
 
 ```
-[SAFETY] CCRAN alarm message field width incorrect — 2 bytes not 1
+[SAFETY] rebus alarm message field width incorrect — 2 bytes not 1
 [SAFETY] BLE PO₂ packet byte ordering underdefined — big-endian assumed but not stated
 [SAFETY] Setpoint command range check missing from spec — firmware accepts invalid values
 ```
