@@ -14,7 +14,6 @@ Copyright (c) 2026 openCCR contributors
 | DLC | 8 |
 | Data bytes 0–7 | Rejected claimant `hardware_uuid`, little-endian `uint64_t` |
 
-An active owner MUST send one rejection for every valid matching `NODE_CLAIM`.
-Only a live claimant whose current candidate ID and UUID both match the frame
-MUST act on it. Every other receiver MUST discard it. The frame uses normal CAN
-retransmission; it is neither acceptance nor ownership confirmation.
+The [active-owner rejection and recovery procedure](../discovery/lifecycle.md#active-owner-rejection-and-recovery)
+owns rejection emission, matching, and claimant recovery. This document defines
+the frame identifier and rejected-claimant UUID payload.

@@ -16,15 +16,16 @@ confirm divergence from those unavailable sources.
   and document ownership.
 
 - [Wire profile](profile.md) — normative profile rules and status.
-- [Discovery](discovery.md) — decentralized node claims, active-owner
-  rejection, addressing, and arbitration.
+- [Discovery](discovery/README.md) — decentralized node claims, active-owner
+  rejection, addressing, and arbitration. The [claim lifecycle](discovery/lifecycle.md)
+  and [identity resolution](discovery/identity.md) files own the detailed behavior.
 - [Design decisions](design-decisions.md) — rationale for persistence,
   reboot recovery, and other implementation choices.
 - [Message catalogue](messages/README.md) — message registry and fixed payloads.
-- [Telemetry](messages/telemetry.md) — telemetry values, units, contexts, and
-  tissue payloads.
-- [Inventory manifest](messages/inventory.md) — static resources, telemetry
-  outputs, configuration schemas, cache advertisement, and retrieval.
+- [Inventory manifests](messages/inventory/README.md) — manifest transport and
+  retrieval, the semantic resource model, and registry assignments.
+- [Telemetry](messages/telemetry/README.md) — scalar and structured values,
+  registries, control requests, and receiver-local subscriptions.
 - [Wire encoding](encoding.md) — CAN payload encoding, byte order, DLC, and
   declaration requirements.
 - [Open issues](open-issues.md) — unresolved values and behaviors.
@@ -33,7 +34,8 @@ confirm divergence from those unavailable sources.
 
 Each topic's owning document is authoritative; the [agent implementation
 guide](AGENTS.md#ownership-and-precedence) names the owner and minimal read
-set. [Discovery](discovery.md) owns decentralized node claims and active-owner
-rejection. The wire profile supersedes only conflicting original source
+set. The [discovery lifecycle](discovery/lifecycle.md) owns decentralized node
+claims and active-owner rejection; [discovery identity](discovery/identity.md)
+owns identity resolution and duplicate-UUID handling. The wire profile supersedes only conflicting original source
 declarations within its own scope. Items in [open issues](open-issues.md) are
 undefined: implementations must not guess them.

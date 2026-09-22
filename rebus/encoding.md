@@ -7,7 +7,7 @@ Copyright (c) 2026 openCCR contributors
 
 This document owns payload serialization and CAN data-field rules. Message
 semantics and identifier assignment belong to the [profile](profile.md) and
-[discovery](discovery.md) documents.
+[discovery entrypoint](discovery/README.md).
 
 ## Payload model
 
@@ -68,10 +68,12 @@ Declared layouts establish field widths and ordering:
 - `rebus_telemetry_control_request_t`: opcode `[1]`, target node ID `[1]`,
   publisher `[1]`, context `[1]`, period `[2]`, duration `[2]`.
 
-The [inventory message specification](messages/inventory.md) owns the
-manifest envelope and transfer completion rules. The
-[telemetry message specification](messages/telemetry.md) owns scalar and
-structured snapshot semantics and completion rules.
+Manifest transfer semantics are defined by
+[manifest transport](messages/inventory/transport.md), while
+[manifest envelope](messages/inventory/envelope.md) owns canonical manifest
+envelope semantics. [Scalar telemetry](messages/telemetry/scalar.md) owns
+scalar telemetry semantics. [Structured snapshots](messages/telemetry/structured.md)
+own structured snapshot semantics and completion rules.
 
 ## Frame format, DLC, and padding
 

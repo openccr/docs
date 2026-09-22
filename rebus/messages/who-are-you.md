@@ -47,14 +47,8 @@ Invalid queries receive no response.
 
 ## Response
 
-The selected active node sends exactly one existing [node claim](node-claim.md)
-frame containing its immutable hardware UUID. The response is delayed by an
-independently generated sender-local random jitter in the inclusive interval
-`0–200 ms`. The jitter reduces response bursts on broadcast queries; it is not
-a network slot, claim epoch, synchronization requirement, deadline, or claim
-throttle.
-
-A response to `WHO_ARE_YOU` is an identity reminder only. It does not allocate,
-confirm, renew, relinquish, or otherwise negotiate a node address. The
-selection and identity-only response rules are owned by the
-[discovery specification](../discovery.md#identity-query).
+For an accepted query, response selection, timing, and identity-reminder
+semantics are defined by the [discovery identity
+specification](../discovery/identity.md#identity-query). The response uses an
+existing [node claim](node-claim.md) frame containing the responder's immutable
+hardware UUID.

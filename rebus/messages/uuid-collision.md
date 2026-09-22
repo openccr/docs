@@ -36,16 +36,7 @@ with an invalid UUID or a failed profile frame gate without a protocol response.
 
 ## Report behavior
 
-A node that detects duplicate activity for its own UUID emits one logical
-`UUID_COLLISION` report using normal CAN retransmission, latches that it has
-reported the collision for the boot/session, and follows the `IDENTITY_FAULT`
-transition defined by [discovery](../discovery.md#duplicate-uuid-detection).
+Duplicate-UUID report, echo, latch, and `IDENTITY_FAULT` behavior are defined
+by the [discovery identity specification](../discovery/identity.md#duplicate-uuid-detection).
 
-A node that receives a report carrying its own UUID emits one logical matching
-report if it has not already reported during the boot/session, then follows the
-same transition. A node with a different local UUID remains operational; its
-interface-facing control plane MAY record and report the diagnostic.
-
-A report is not an acknowledgement, ownership decision, or reset request.
-Fixed application-level repetition and forwarding are not used. CAN controller
-retransmission remains available for the logical emission.
+This diagnostic is not an acknowledgement, ownership decision, or reset request.
