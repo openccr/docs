@@ -3,9 +3,9 @@ Copyright (c) 2026 openCCR contributors
 
 # Rebus design decisions
 
-This document records implementation and product choices that support the
-normative Rebus specifications without adding their rationale to wire-format
-documents.
+This document is non-normative rationale for implementation and product
+choices. It assigns no wire value, profile behavior, registry value, or state
+transition; each linked normative owner remains authoritative for those rules.
 
 ## Persist node identity and admission
 
@@ -36,11 +36,11 @@ repetition is deliberately avoided.
 ### Accepted duplicate-UUID limitation
 
 Two physical nodes with the same UUID that claim the same node ID at exactly
-indistinguishable times can emit byte-identical `NODE_CLAIM` frames. Classic
-CAN carries no sender discriminator, so neither node can prove that a second
-physical sender exists when the duplicate frame cannot be distinguished from
-its own local emission. Those nodes could therefore complete the five-claim
-procedure without emitting `UUID_COLLISION`.
+indistinguishable times can emit byte-identical `NODE_CLAIM` frames. Neither
+selected Rebus physical profile carries a sender discriminator, so neither node
+can prove that a second physical sender exists when the duplicate frame cannot
+be distinguished from its own local emission. Those nodes could therefore
+complete the five-claim procedure without emitting `UUID_COLLISION`.
 
 This is an accepted low-probability limitation of the current Rebus scope. A
 future revision MAY add a claim-origin discriminator or a second-stage
@@ -62,15 +62,52 @@ most once, and a matching receiver reports once in response; CAN controller
 retransmission handles bus errors without creating an application-level report
 storm.
 
+## Physical-profile choices
+
+### Why profile selection is commissioned
+
+The selected profile is commissioned rather than inferred so that a received
+frame is never used to choose the rules that determine whether it is admissible.
+This also keeps Classic and FD segments deliberately non-interoperable instead
+of treating a format change as transparent compatibility. The normative
+selection and admission rules are in the [wire profile](profile.md).
+
+### Why fixed logical messages stay eight bytes on FD
+
+Keeping fixed logical messages at eight bytes makes their logical layout
+independent of extra FD data-field capacity. That capacity remains available
+only to the transfer forms that own it, avoiding an accidental format extension
+that a Classic peer could not represent. The [wire encoding](encoding.md) and
+each message owner define the normative decoded-length rules.
+
+### Why canonical manifest bytes are profile-independent
+
+Profile-specific transfer framing changes how canonical manifest bytes are
+carried, not what those bytes mean. This keeps a manifest's fingerprint,
+revision, semantics, and registry values comparable across commissioned
+profiles. [Manifest transport](messages/inventory/transport.md) owns the
+physical transfer behavior; the [manifest envelope](messages/inventory/envelope.md)
+owns canonical bytes.
+
+### Why claim timing remains local
+
+The current claim procedure keeps timing local because admission and recovery
+do not need a shared clock merely to make candidate selection deterministic.
+The profile-specific capacity calculation bounds commissioned deployments
+without converting the local throttle into a shared schedule. The [wire
+profile](profile.md) and [claim lifecycle](discovery/lifecycle.md) define the
+normative capacity and lifecycle rules.
+
 ## Bind manifest transfers before chunk assembly
 
-A manifest chunk preserves four bytes of canonical content, so its existing
-eight-byte payload has no room for a revision and fingerprint in addition to
-the transfer ID and chunk index. A separate transfer-start frame carries the
-revision and fingerprint once; the receiver supplies the UUID and
-identity-generation from discovery and requires every chunk to belong to that
-accepted context. This preserves chunk capacity while preventing an orphan,
-stale, or node-ID-reassigned chunk from creating a manifest assembly.
+A manifest chunk reserves four header bytes for its message type, transfer ID,
+and index. Its remaining data area carries canonical content: four bytes in
+Classic CAN or the selected decoded length minus four in CAN FD. Neither chunk
+layout carries the revision and fingerprint alongside the transfer ID. A
+separate transfer-start frame carries that identity once; the receiver supplies
+the UUID and identity generation from discovery and requires every chunk to
+belong to the accepted context. This prevents an orphan, stale, or
+node-ID-reassigned chunk from creating a manifest assembly.
 
 ## Qualify manifest cache freshness with revision
 
@@ -122,8 +159,10 @@ logical snapshot, keeps it constant across all chunks, wraps from `0xFF` to
 `0x00`, and resets it only at active entry or a UUID-binding reset; values
 recur within an active generation only through that modulo wrap. A receiver
 accepts the first complete snapshot as a baseline, treats modulo advances
-`1..127` as newer, `0` as duplicate, and `128..255` as stale, and discards an
-older incomplete assembly when a newer sequence appears.
+`1..127` as newer, `0` as duplicate, and `128..255` as stale. It compares each
+chunk against the last committed sequence before considering a pending assembly;
+only a candidate also newer than the pending sequence may replace it. A chunk
+that is pending-forward but committed-stale cannot evict a valid assembly.
 
 This preserves out-of-order chunk delivery while preventing late chunks from
 an older snapshot from replacing current state. The half-range rule has the

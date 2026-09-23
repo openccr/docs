@@ -5,24 +5,35 @@ Copyright (c) 2026 openCCR contributors
 
 ## Scope
 
-Message identifiers, payload layouts, and message-specific registries. Wire
-serialization rules are defined in [wire encoding](../encoding.md).
+This is a non-normative catalogue of assigned Rebus messages and their
+post-gate logical owners. It does not allocate identifiers, define profile
+admission, or duplicate payload validation.
+
+## Applicability and physical reading path
+
+The [agent implementation guide](../AGENTS.md#applicability-legend) defines
+the **COMMON**, **CLASSIC CAN**, and **CAN FD** markers used by the normative
+owners. For every catalogue entry, [wire profile](../profile.md) owns the
+selected physical gate and rejects invalid or wrong-profile forms before
+dispatch. [Wire encoding](../encoding.md) owns FD raw-DLC-to-decoded-length
+mapping. Only after those owners admit a frame does the row's logical owner
+apply its fixed or transfer-class decoded-length and payload rules.
 
 ## Catalogue
 
-| Message | Payload type | DLC | Status |
-|---|---|---:|---|
-| Node claim | `rebus_msg_node_claim_t` | 8 | `0x281–0x2FF` |
-| Claim rejection | UUID payload | 8 | `0x101–0x17F` |
-| UUID collision | `rebus_msg_uuid_collision_t` | 8 | `0x480` |
-| Identity query | `rebus_msg_who_are_you_t` | 8 | `0x200` or `0x201–0x27F` |
-| [Manifest query](inventory/transport.md#manifest-query) | `rebus_msg_manifest_query_t` | 8 | `0x081–0x0FF` |
-| [Manifest advertise](inventory/transport.md#manifest-advertisement) | `rebus_msg_manifest_advertise_t` | 8 | `0x301–0x37F` |
-| [Manifest transfer start](inventory/transport.md#manifest-transfer-start-and-chunks) | `rebus_msg_manifest_transfer_start_t` | 8 | `0x301–0x37F` |
-| [Manifest chunk](inventory/transport.md#manifest-transfer-start-and-chunks) | `rebus_msg_manifest_chunk_t` | 8 | `0x301–0x37F` |
-| [Scalar telemetry](telemetry/scalar.md) | `openccr_telemetry_frame_t` | 8 | `0x381–0x3FF` |
-| [Structured snapshot chunk](telemetry/structured.md) | `rebus_msg_structured_snapshot_chunk_t` | 8 | `0x401–0x47F` |
-| [Telemetry control request](telemetry/control.md) | `rebus_telemetry_control_request_t` | 8 | `0x181–0x1FF` |
+| Message | Post-gate logical owner |
+|---|---|
+| Node claim | [node claim](node-claim.md) |
+| Claim rejection | [claim rejection](claim-reject.md) |
+| UUID collision | [UUID collision](uuid-collision.md) |
+| Identity query | [WHO_ARE_YOU](who-are-you.md) |
+| Manifest query | [inventory transport](inventory/transport.md#manifest-query) |
+| Manifest advertisement | [inventory transport](inventory/transport.md#manifest-advertisement) |
+| Manifest transfer start | [inventory transport](inventory/transport.md#manifest-transfer-start-and-chunks) |
+| Manifest chunk | [inventory transport](inventory/transport.md#manifest-transfer-start-and-chunks) |
+| Scalar telemetry | [scalar telemetry](telemetry/scalar.md) |
+| Structured snapshot chunk | [structured snapshots](telemetry/structured.md) |
+| Telemetry control request | [telemetry control](telemetry/control.md) |
 
 - [Node claim](node-claim.md) — hardware identity payload.
 - [WHO_ARE_YOU](who-are-you.md) — targeted or broadcast identity query.

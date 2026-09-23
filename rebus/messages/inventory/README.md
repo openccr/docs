@@ -17,14 +17,25 @@ The manifest is the authoritative source for concrete node properties. Rebus
 has no separate wire-level role bitmask. A receiver derives any local service
 classification from the resources and interfaces present in the manifest.
 
+## Applicability and reading path
+
+This README is non-normative navigation. The [transport](transport.md),
+[envelope](envelope.md), [model](model.md), and [registries](registries.md)
+owners mark their completed **COMMON** logical and canonical rules. Transport
+owns its **CLASSIC CAN** and **CAN FD** chunk and deadline rules; the model owns
+the selected-profile structured-output bound. The [profile](../../profile.md)
+and [wire encoding](../../encoding.md) owners decide physical admission and
+decoded length before any inventory owner is consulted. [Authoring guidance](authoring.md)
+is non-normative and assigns no profile behavior.
+
 ## Normative file map
 
 | File | Owner | Primary consumer |
 |---|---|---|
-| [transport.md](transport.md) | Manifest message lifecycle, transfer, cache identity, and active-session behavior | Transfer implementation |
-| [envelope.md](envelope.md) | Canonical manifest header, record stream, and TLV framing | Manifest validation |
-| [model.md](model.md) | Resource, output, relation, parameter, and provenance semantics | Inventory model implementation |
-| [registries.md](registries.md) | Assigned semantic values and registry-population contract | Registry validation |
+| [transport.md](transport.md) | Manifest message lifecycle, cache identity, active-session behavior, and selected-profile chunk layout and transfer capacity | Transfer implementation |
+| [envelope.md](envelope.md) | Canonical, profile-independent manifest header, record stream, and TLV framing | Manifest validation |
+| [model.md](model.md) | Profile-independent resource/output semantics and selected-profile structured-output length bounds | Inventory model implementation |
+| [registries.md](registries.md) | Profile-independent assigned semantic values and registry-population contract | Registry validation |
 | [authoring.md](authoring.md) | Non-normative YAML and contribution guidance | Manifest authors |
 
 ## Dependencies
@@ -39,12 +50,12 @@ classification from the resources and interfaces present in the manifest.
 | Task | Required read set |
 |---|---|
 | Encode or decode a manifest transfer | [profile](../../profile.md), [encoding](../../encoding.md), [transport](transport.md) |
-| Validate manifest bytes | [encoding](../../encoding.md), [envelope](envelope.md), [registries](registries.md) |
-| Implement inventory resources or outputs | [envelope](envelope.md), [model](model.md), [registries](registries.md) |
+| Validate a received manifest for activation | [profile](../../profile.md), [encoding](../../encoding.md), [transport](transport.md), [envelope](envelope.md), [registries](registries.md) |
+| Implement inventory resources or outputs | [profile](../../profile.md), [envelope](envelope.md), [model](model.md), [registries](registries.md) |
 
 ## Boundary warnings
 
-[Profile](../../profile.md), [encoding](../../encoding.md), and [discovery](../../discovery/README.md) own cross-cutting rules. Inventory documents MUST link to those owners rather than redefine frame admission, serialization, or identity behavior. In particular, manifest transport does not authorize configuration operations, and the manifest model does not assign new registry values.
+[Profile](../../profile.md), [encoding](../../encoding.md), and [discovery](../../discovery/README.md) own cross-cutting rules. Inventory documents MUST link to those owners rather than redefine frame admission, serialization, or identity behavior. Transport owns selected-profile chunk layout and deadlines; the model owns output descriptor capacity under the selected profile. Envelope and registries own canonical profile-independent bytes and values. Manifest transport does not authorize configuration operations, and the model does not assign new registry values.
 
 ## Protocol flow
 

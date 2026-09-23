@@ -2,6 +2,8 @@ SPDX-License-Identifier: CC-BY-4.0
 Copyright (c) 2026 openCCR contributors
 
 # Inventory registries
+**COMMON**
+
 
 This document owns the assigned semantic inventory values and the registry-population contract. Record framing and record-kind assignments belong to the [manifest envelope](envelope.md); resource, output, relation, and parameter semantics belong to the [inventory model](model.md).
 
@@ -39,13 +41,17 @@ supports:
 
 Structured outputs use the output's `value_type` and nested shape properties:
 
-```text
-SCALAR
-FIXED_ARRAY
-MATRIX
-PACKED_TISSUE_VECTOR
-STRUCTURED_SNAPSHOT
-```
+| Value | Descriptor requirement |
+|---|---|
+| `SCALAR` | Scalar representation |
+| `FIXED_ARRAY` | Array shape and dimensions |
+| `MATRIX` | Matrix shape and dimensions |
+| `PACKED_TISSUE_VECTOR` | Packed-vector shape and dimensions |
+| `STRUCTURED_SNAPSHOT` | Validate the descriptor under the [inventory model](model.md#resource-model). |
+
+The selected-profile encoded-length bound belongs to the
+[inventory model](model.md#resource-model). Registry assignments for shape,
+element type, element unit, and dimensions are profile-independent.
 
 ## Value types
 

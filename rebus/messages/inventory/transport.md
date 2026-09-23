@@ -4,6 +4,8 @@ Copyright (c) 2026 openCCR contributors
 # Inventory manifest transport
 
 ## Identifier assignments
+**COMMON**
+
 
 Manifest messages use two identifier classes:
 
@@ -17,10 +19,29 @@ seven identifier bits name the target node. The requester ID is also present
 in the payload for rate limiting and request correlation. Advertisements,
 transfer starts, and chunks use the low seven bits as the source node ID.
 
-All four messages are exactly eight-byte Classic CAN data payloads. The
-receiver applies the [profile frame gate](../../profile.md) before message-specific validation.
+**COMMON**
+
+Manifest advertisement, query, and transfer start are fixed eight-decoded-byte
+messages in both profiles. The receiver applies the [profile frame gate](../../profile.md)
+before message-specific validation.
+
+### Chunk geometry
+
+#### Classic CAN
+**CLASSIC CAN**
+
+A manifest chunk has decoded length `L = 8` and data-area length `D = 4`.
+
+#### CAN FD
+**CAN FD**
+
+A manifest chunk uses a permitted selected decoded length and data-area length
+`D = L - 4`.
+
 
 ## Manifest advertisement
+**COMMON**
+
 
 `rebus_msg_manifest_advertise_t` is an eight-byte payload:
 
@@ -41,6 +62,13 @@ integrity or authorization credential, and MUST NOT be the sole freshness
 decision. The complete manifest remains the validation source. A fingerprint of
 `0x00000000` is reserved and MUST NOT be advertised or stored as a current
 manifest fingerprint; it is the query sentinel for “no cached manifest”.
+
+Before activating or caching a completed manifest, a receiver MUST recompute
+the SHA-256 fingerprint with the header fingerprint field zeroed and require
+its first four bytes to equal the nonzero fingerprint in both the completed
+header and the accepted transfer-start context. A mismatch invalidates the
+transfer even if no previous cache entry exists; this check is not
+authentication.
 
 `manifest_revision` is a source-local manifest generation. `0x0000` is reserved
 as the no-known-revision query sentinel. A node MUST retain the same revision
@@ -96,6 +124,8 @@ Implementations SHOULD retain only the bounded cache depth appropriate for
 their available memory and flash.
 
 ## Manifest query
+**COMMON**
+
 
 `rebus_msg_manifest_query_t` is an eight-byte payload sent to the target node:
 
@@ -128,9 +158,11 @@ The v0.1 minimum interval between accepted queries from one requester to one
 source is one second; excess queries are discarded without response.
 
 ## Manifest transfer start and chunks
+**COMMON**
 
-`rebus_msg_manifest_transfer_start_t` is an eight-byte payload sent by the
-source as a broadcast:
+
+`rebus_msg_manifest_transfer_start_t` is a fixed eight-decoded-byte payload in
+both profiles, sent by the source as a broadcast:
 
 | Offset | Length | Type | Meaning |
 |---:|---:|---|---|
@@ -175,21 +207,69 @@ context. A source MUST NOT reuse a transfer ID concurrently for different
 immutable snapshots. It MAY reuse an ID for the same snapshot or after the
 prior context has been invalidated.
 
-`rebus_msg_manifest_chunk_t` is an eight-byte payload sent by the source as a
-broadcast:
+### Selected chunk length
+**COMMON**
+
+The accepted start is the sole source of a transfer's `transfer_id` binding;
+the receiver MUST NOT stage chunk header bytes to discover or combine a
+transfer ID.
+
+#### Classic CAN
+**CLASSIC CAN**
+
+For Classic, the context's selected decoded length is eight and its data area
+is four bytes.
+
+#### CAN FD
+**CAN FD**
+
+For FD, the first accepted chunk after the start MUST have `chunk_index = 0`
+and a decoded length `L` in `{8, 12, 16, 20, 24, 32, 48, 64}`. That chunk pins
+`L` and the data-area length `D = L - 4` for the assembly before any later
+chunk is buffered. Chunks other than index zero received before the FD decoded
+length is pinned are discarded.
+
+### Common chunk validation
+**COMMON**
+
+A chunk MUST match its active start context's `transfer_id` and selected
+decoded length. A transfer-ID or decoded-length mismatch, or a conflicting
+duplicate chunk, MUST discard and evict the assembly.
+
+The selected-profile gate rejects wrong physical forms before transport dispatch
+without altering an existing assembly; it never infers a profile from traffic.
+
+`rebus_msg_manifest_chunk_t` is a transfer-class payload sent by the source as
+a broadcast:
 
 | Offset | Length | Type | Meaning |
 |---:|---:|---|---|
 | 0 | 1 | `uint8_t` | `message_type`; `0x02` for transfer chunk |
 | 1 | 1 | `uint8_t` | `transfer_id`; source-local transfer identifier |
 | 2 | 2 | `uint16_t` | `chunk_index`; zero-based |
-| 4 | 4 | `uint8_t[4]` | Canonical manifest bytes at this chunk offset |
+| 4 | `D` | `uint8_t[D]` | Canonical manifest bytes at this chunk offset |
 
-Each chunk carries four manifest bytes. The source MUST send chunks in
-increasing `chunk_index` order for a transfer. A receiver MAY accept them
-out of order, MUST discard duplicate indexes after the first identical copy,
-and MUST discard a conflicting duplicate. The maximum manifest length is
-65,535 bytes; the maximum chunk index is therefore 16,383.
+The source MUST send chunks in increasing `chunk_index` order for a transfer.
+Once the selected length is pinned, a receiver MAY accept them out of order,
+MUST discard duplicate indexes after the first identical copy, and MUST discard
+a conflicting duplicate. The maximum manifest length is 65,535 bytes.
+
+### Chunk-index ceilings
+
+#### Classic CAN
+**CLASSIC CAN**
+
+For `D = 4`, the maximum valid `chunk_index` is
+`ceil(65,535 / D) - 1 = 16,383`; a receiver MUST reject a larger index.
+
+#### CAN FD
+**CAN FD**
+
+For a permitted selected FD data-area length `D`, the maximum valid
+`chunk_index` is `ceil(65,535 / D) - 1`; a receiver MUST reject a larger index.
+
+### Transfer assembly and completion
+**COMMON**
 
 The transfer is an immutable snapshot. Every chunk accepted under a start
 context MUST belong to that context's source UUID, manifest revision,
@@ -200,14 +280,19 @@ context, in addition to the existing length and encoding checks. Transfer
 timeout, retry, and cache replacement are local behaviors; a receiver MUST
 NOT publish incomplete manifest data as current inventory.
 
-The first bytes of the transfer are the [manifest header](envelope.md#header). The header supplies
-the total byte length, so completion is determined by receiving every chunk
-covering that length. If `total_length` is not a multiple of four, the source
-MUST fill the unused bytes in the final chunk's four-byte `manifest_data` field
-with zero. A receiver MUST validate those unused bytes as zero and reject the
-transfer if any is nonzero; the padding is not part of the canonical manifest.
-The canonical manifest length MUST be nonzero and MUST be no greater than
-65,535 bytes. A missing final partial chunk is invalid.
+The first bytes of the transfer are the [manifest header](envelope.md#header).
+The header supplies the total byte length. For the assembly's data-area length
+`D`, completion requires all `N = ceil(total_length / D)` chunks covering that
+length. If `total_length` is not a multiple of `D`, the source MUST fill the
+unused bytes in the final chunk's `manifest_data` area with zero. A receiver
+MUST validate those unused bytes as zero and reject the transfer if any is
+nonzero; the padding is not part of the canonical manifest. A deployment MUST
+configure one maximum canonical manifest length in `24..65,535` bytes for all
+its senders and receivers. A source MUST NOT advertise or transfer a manifest
+above that limit. Once the 24-byte header is available, a receiver MUST reject
+an assembly whose `total_length` exceeds the configured limit (or is smaller
+than the header); a missing final partial chunk is invalid. The wire-format
+ceiling and chunk-index bound remain 65,535 bytes.
 
 A changed UUID binding MUST invalidate every incomplete transfer context for
 the prior identity generation. A valid advertisement with a different revision
@@ -220,9 +305,43 @@ starting an equivalent transfer more than once per 250 ms. These limits bound
 bus load without preventing a broadcast response from serving multiple
 requesters.
 
-## Cache and identity rules
+## Transfer deadline commissioning inputs
+**COMMON**
 
-Discovery establishes the current mapping between a hardware UUID and a node
+
+The deployment MUST commission a completion deadline and an inactivity deadline
+for manifest transfer. Its proof MUST cover the deployment-wide configured
+maximum manifest length.
+
+The completion deadline bounds the elapsed time from accepted start through all
+`N` chunks; the inactivity deadline bounds the interval after an accepted start
+or chunk without the next required chunk. A receiver MUST evict an incomplete
+assembly when either deadline expires.
+
+### Classic CAN
+**CLASSIC CAN**
+
+The Classic proof uses the fixed eight-decoded-byte transfer start, `D = 4`,
+`N = ceil(maximum_manifest_size / D)`, Classic's commissioned worst-case
+elapsed frame costs, the source's bounded inter-chunk scheduling delay, and the
+bounded competing-traffic and recovery assumptions.
+
+### CAN FD
+**CAN FD**
+
+The FD proof covers every permitted selected chunk length and uses the fixed
+eight-decoded-byte transfer start, `D = L - 4`,
+`N = ceil(maximum_manifest_size / D)`, the selected profile's commissioned
+worst-case elapsed frame costs, the source's bounded inter-chunk scheduling
+delay, and the bounded competing-traffic and recovery assumptions.
+
+
+
+## Cache and identity rules
+**COMMON**
+
+
+Discovery establishes the current mapping between a hardware UUID and a node ID.
 The inventory cache is keyed by:
 
 ```text

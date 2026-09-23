@@ -11,28 +11,45 @@ semantics and identifier assignment belong to the [profile](profile.md) and
 
 ## Payload model
 
-Each physical frame carries one complete eight-byte declared payload in the
-CAN data field. Manifest content and structured telemetry snapshots are the
-logical multi-frame transfers defined by their owning message documents; each
-transfer chunk is still one complete eight-byte CAN payload.
+**COMMON**
 
-| Payload | Length |
+Physical payload admission begins with the commissioned selected profile in
+[profile](profile.md). The profile gate supplies the accepted frame form.
+
+Message owners apply their fixed or transfer-class decoded-length rules after
+the selected profile supplies the decoded length.
+
+The fixed logical messages below are exactly eight decoded bytes in both
+profiles:
+
+| Payload | Decoded length |
 |---|---:|
 | `rebus_msg_node_claim_t` | 8 bytes |
 | `CLAIM_REJECT` UUID payload | 8 bytes |
 | `rebus_msg_who_are_you_t` | 8 bytes |
+| `rebus_msg_uuid_collision_t` | 8 bytes |
 | `rebus_msg_manifest_advertise_t` | 8 bytes |
 | `rebus_msg_manifest_query_t` | 8 bytes |
 | `rebus_msg_manifest_transfer_start_t` | 8 bytes |
-| `rebus_msg_manifest_chunk_t` | 8 bytes |
-| `openccr_telemetry_frame_t` | 8 bytes |
-| `rebus_msg_structured_snapshot_chunk_t` | 8 bytes |
+| `rebus_telemetry_frame_t` | 8 bytes |
 | `rebus_telemetry_control_request_t` | 8 bytes |
 
-All physical frames fit in a classic CAN data field. Rebus v0.1 prohibits CAN
-FD framing, including an eight-byte CAN FD frame.
+Manifest and structured-snapshot chunks are transfer-class payloads. Each has
+a four-byte transfer header followed by a profile data area. Their owning
+message documents define transfer semantics and accepted chunk lengths.
+
+### Classic CAN
+**CLASSIC CAN**
+
+The Classic data area is `D=4` bytes.
+
+### CAN FD
+**CAN FD**
+
+The FD data area is `D=decoded_length-4` bytes.
 
 ## Byte order
+**COMMON**
 
 All multi-byte values use little-endian payload-octet encoding. For an
 `N`-octet value `v`, byte `i` is `(v >> (8 * i)) & 0xff`; signed integers use
@@ -46,6 +63,7 @@ octet order never changes physical CAN bit order.
 ```
 
 ## Declared layout
+**COMMON**
 
 Declared layouts establish field widths and ordering:
 
@@ -59,12 +77,12 @@ Declared layouts establish field widths and ordering:
 - `rebus_msg_manifest_transfer_start_t`: message type `[1]`, transfer ID `[1]`,
   manifest revision `[2]`, manifest fingerprint `[4]`;
 - `rebus_msg_manifest_chunk_t`: message type `[1]`, transfer ID `[1]`,
-  chunk index `[2]`, manifest data `[4]`;
-- `openccr_telemetry_frame_t`: publisher `[1]`, sequence `[1]`, status flags
+  chunk index `[2]`, then a profile data area;
+- `rebus_telemetry_frame_t`: publisher `[1]`, sequence `[1]`, status flags
   `[1]`, context `[1]`, then a four-byte context-selected value;
 - `rebus_msg_structured_snapshot_chunk_t`: publisher `[1]`,
-  snapshot sequence `[1]`, chunk index `[1]`, chunk count `[1]`,
-  snapshot data `[4]`;
+  snapshot sequence `[1]`, chunk index `[1]`, chunk count `[1]`, then a
+  profile data area;
 - `rebus_telemetry_control_request_t`: opcode `[1]`, target node ID `[1]`,
   publisher `[1]`, context `[1]`, period `[2]`, duration `[2]`.
 
@@ -76,30 +94,47 @@ scalar telemetry semantics. [Structured snapshots](messages/telemetry/structured
 own structured snapshot semantics and completion rules.
 
 ## Frame format, DLC, and padding
+**COMMON**
 
-Every Rebus v0.1 frame is a Classic CAN 2.0A base-format data frame (`IDE=0`,
-`RTR=0`) with raw DLC 8 and exactly eight data bytes. CAN FD, BRS, ESI,
-extended frames, remote frames, and all other DLC values MUST be discarded
-before message decoding without response. A conforming receive path must
-retain the format, raw DLC, and data-length metadata needed to enforce that
-gate.
+The selected profile's gate in [profile](profile.md) is authoritative.
 
-There is no variable-length trailing padding in a physical payload. Fixed-size
-logical data fields may contain canonical zero-filled unused bytes. For a final
-manifest chunk whose `total_length` is not a multiple of four, the unused
-bytes in its four-byte `manifest_data` field MUST be zero and are excluded from
-the canonical manifest; receivers MUST reject nonzero unused bytes. For the
-final structured snapshot chunk, unused bytes in its four-byte data field MUST
-be zero and are excluded by the manifest's `encoded_length`.
+Fixed logical messages require exactly eight decoded bytes in both profiles.
+
+For a final transfer chunk, unused bytes in the profile data area MUST be zero
+and are not logical bytes. This applies to the Classic four-byte data area and
+the FD `decoded_length - 4` data area. A receiver MUST reject nonzero unused
+data-area bytes. Fixed-size logical data fields may contain canonical
+zero-filled unused bytes.
+
+A receiver MUST discard an invalid, unsupported, or inconsistent physical
+payload without response.
+
+### Classic CAN
+**CLASSIC CAN**
+
+Every accepted Classic physical payload has raw DLC 8 and decoded length 8.
+
+### CAN FD
+**CAN FD**
+
+This document exclusively maps an accepted raw FD DLC to its decoded byte
+length. Raw DLC `0..8` maps to the same decoded length. Raw DLC `9..15` maps,
+respectively, to decoded lengths `12`, `16`, `20`, `24`, `32`, `48`, and `64`
+bytes.
+
+An FD decoder MUST map raw DLC to decoded length and validate that length
+against the message's rule before reading a four-byte transfer header or
+subtracting four to obtain its data-area length.
 
 ## Declaration requirements
+**COMMON**
 
 Use standard C typedef notation for named declarations:
 
 ```c
-typedef uint16_t openccr_manifest_revision_t;
-typedef uint16_t openccr_resource_id_t;
-typedef uint16_t openccr_semantic_id_t;
+typedef uint16_t rebus_manifest_revision_t;
+typedef uint16_t rebus_resource_id_t;
+typedef uint16_t rebus_semantic_id_t;
 
 typedef struct {
     uint8_t low;

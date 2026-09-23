@@ -15,27 +15,43 @@ confirm divergence from those unavailable sources.
 - [Agent implementation guide](AGENTS.md) — minimal topic-specific read sets
   and document ownership.
 
-- [Wire profile](profile.md) — normative profile rules and status.
+- [Wire profile](profile.md) — commissioned selected-profile rules, identifiers,
+  physical admission, and capacity.
 - [Discovery](discovery/README.md) — decentralized node claims, active-owner
   rejection, addressing, and arbitration. The [claim lifecycle](discovery/lifecycle.md)
   and [identity resolution](discovery/identity.md) files own the detailed behavior.
 - [Design decisions](design-decisions.md) — rationale for persistence,
   reboot recovery, and other implementation choices.
-- [Message catalogue](messages/README.md) — message registry and fixed payloads.
-- [Inventory manifests](messages/inventory/README.md) — manifest transport and
-  retrieval, the semantic resource model, and registry assignments.
-- [Telemetry](messages/telemetry/README.md) — scalar and structured values,
-  registries, control requests, and receiver-local subscriptions.
-- [Wire encoding](encoding.md) — CAN payload encoding, byte order, DLC, and
-  declaration requirements.
-- [Open issues](open-issues.md) — unresolved values and behaviors.
+- [Message catalogue](messages/README.md) — physical-validation reading order
+  and links to the message-specific payload owners.
+- [Inventory manifests](messages/inventory/README.md) — profile-aware transport,
+  canonical envelope, semantic resource model, and registry assignments.
+- [Telemetry](messages/telemetry/README.md) — scalar and structured framing,
+  value registries, control requests, and receiver-local subscriptions.
+- [Wire encoding](encoding.md) — profile-aware CAN payload encoding, byte
+  order, raw-DLC mapping, and declaration requirements.
+- [Defined-rule issues](open-issues.md) — evidenced inconsistencies and edge cases in completed rules.
+- [Missing functionality](missing-functionality.md) — referenced contracts that still need definition; no implementation defaults.
 
-## Implementation rule
+## Applicability and reading order
 
-Each topic's owning document is authoritative; the [agent implementation
-guide](AGENTS.md#ownership-and-precedence) names the owner and minimal read
-set. The [discovery lifecycle](discovery/lifecycle.md) owns decentralized node
-claims and active-owner rejection; [discovery identity](discovery/identity.md)
-owns identity resolution and duplicate-UUID handling. The wire profile supersedes only conflicting original source
-declarations within its own scope. Items in [open issues](open-issues.md) are
-undefined: implementations must not guess them.
+This index is non-normative navigation. The single applicability legend is in
+the [agent implementation guide](AGENTS.md#applicability-legend): the
+normative owner marks its completed **COMMON**, **CLASSIC CAN**, and **CAN FD**
+scopes.
+
+Before decoding a physical Rebus frame, read the commissioned selected-profile
+gate in [wire profile](profile.md), then [wire encoding](encoding.md), then the
+applicable message or lifecycle owner. The linked owners allocate
+pre-dispatch physical rejection to profile, FD decoded-length mapping to
+encoding, and post-gate message validation to the named owner; profile
+selection is determined by the [wire profile](profile.md), not this index.
+
+The [agent implementation guide](AGENTS.md#minimal-read-sets) gives the
+topic-specific required read sets. The [discovery lifecycle](discovery/lifecycle.md)
+owns decentralized node claims and active-owner rejection; [discovery identity](discovery/identity.md)
+owns identity resolution and duplicate-UUID handling. The [wire profile](profile.md)
+supersedes only conflicting original source declarations within its own scope.
+Items in [missing functionality](missing-functionality.md) remain undefined and
+are not defaults; [defined-rule issues](open-issues.md) identify problems in
+rules that have already been stated.

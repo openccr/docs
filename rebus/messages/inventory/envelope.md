@@ -4,6 +4,8 @@ Copyright (c) 2026 openCCR contributors
 # Inventory manifest envelope
 
 ## Manifest envelope
+**COMMON**
+
 
 The manifest is a canonical binary record stream. All integer fields use fixed
 widths and [little-endian encoding](../../encoding.md). No compiler struct layout, alignment,
@@ -18,7 +20,7 @@ The first 24 bytes are the manifest header:
 | 0 | 1 | `uint8_t` | `format`; `0x01` |
 | 1 | 1 | `uint8_t` | `header_length`; `24` |
 | 2 | 2 | `uint16_t` | `total_length`; header plus all records |
-| 4 | 2 | `uint16_t` | `revision`; source-local monotonic manifest revision |
+| 4 | 2 | `uint16_t` | `revision`; source-local manifest generation; see [manifest transport](transport.md) for advancement, wrap, and comparison rules |
 | 6 | 2 | `uint16_t` | `record_count`; top-level record count |
 | 8 | 4 | `uint32_t` | `fingerprint`; [SHA-256 fingerprint](transport.md#manifest-advertisement) |
 | 12 | 8 | `uint64_t` | `hardware_uuid`; UUID that owns the manifest |

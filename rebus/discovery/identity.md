@@ -2,6 +2,8 @@ SPDX-License-Identifier: CC-BY-4.0
 Copyright (c) 2026 openCCR contributors
 
 # Rebus discovery identity
+**COMMON**
+
 
 ## Scope and dependencies
 
@@ -23,13 +25,14 @@ discovery state; it does not redefine their wire contracts.
 specification](../messages/who-are-you.md). A specific query uses
 `CAN_ID = (0x04 << 7) | target_node_id` for `target_node_id` in `0x01–0x7F`.
 The broadcast query uses `CAN_ID = 0x200`; its low `0x00` is a query-only
-exception and is not an assignable node ID. Both forms are Classic CAN base
-data frames with raw DLC 8.
+exception and is not an assignable node ID. Both forms are processed after the
+selected profile gate; their fixed eight-byte payload validation is owned by
+the message specification.
 
 A commissioned node in `CLAIMING` or `ACTIVE` MAY send `WHO_ARE_YOU`. It MUST
 use its current candidate ID while `CLAIMING` or its assigned ID while
 `ACTIVE`. An uncommissioned passive listener remains receive-only. A receiver
-MUST apply the profile frame gate, require message type `0x01`, require a
+MUST apply the selected profile gate, require message type `0x01`, require a
 requester ID in `0x01–0x7F`, and require all six reserved payload bytes to be
 zero. It MUST discard an invalid query without response. The requester ID
 correlates the request and does not authorize or negotiate the target address.
@@ -49,13 +52,14 @@ invalidate it. A node MUST coalesce duplicate observations of the same query
 while its response timer is pending and MUST send no more than one response
 for that query.
 
-The response is a [`node_claim`](../messages/node-claim.md) with the responder's
-current node ID in the claim identifier and its immutable UUID in the
-eight-byte payload. A receiver that observed the accepted query MUST correlate
-a response from a selected active node as an identity reminder. It MUST
-establish or refresh the UUID-to-node-ID mapping from that response; if a
-different UUID was previously bound to that node ID, the current binding is
-replaced for subsequent identity resolution.
+The response is a selected-profile-gated
+[`node_claim`](../messages/node-claim.md) with the responder's current node ID
+in the claim identifier and its immutable UUID in the eight-byte payload. A
+receiver that observed the accepted query MUST correlate a response from a
+selected active node as an identity reminder. It MUST establish or refresh the
+UUID-to-node-ID mapping from that response; if a different UUID was previously
+bound to that node ID, the current binding is replaced for subsequent identity
+resolution.
 
 The correlated response is an identity reminder only. It MUST NOT increment or
 satisfy a claim count, arbitrate UUIDs, cause candidate loss, cause
@@ -88,11 +92,11 @@ is not required for detection. A node excludes only its own locally submitted
 claim from this comparison. Local transmit bookkeeping is an origin filter,
 never ownership evidence.
 
-On detecting a duplicate claim, a node emits one logical `UUID_COLLISION`
-message with its own UUID using normal CAN retransmission, latches that it has
-reported the collision for the boot/session, and enters `IDENTITY_FAULT`. The
-node MUST NOT emit fixed application-level repeats or forward unrelated
-collision reports.
+On detecting a duplicate claim, a node emits one logical,
+selected-profile-gated `UUID_COLLISION` message with its own UUID using normal
+CAN retransmission, latches that it has reported the collision for the
+boot/session, and enters `IDENTITY_FAULT`. The node MUST NOT emit fixed
+application-level repeats or forward unrelated collision reports.
 
 A node that receives `UUID_COLLISION` carrying its own UUID emits one logical
 matching report if its report latch is not set, then enters `IDENTITY_FAULT`.

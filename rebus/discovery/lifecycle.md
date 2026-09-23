@@ -2,6 +2,8 @@ SPDX-License-Identifier: CC-BY-4.0
 Copyright (c) 2026 openCCR contributors
 
 # Rebus discovery lifecycle
+**COMMON**
+
 
 ## Application-level acceptance boundary
 
@@ -15,9 +17,10 @@ record's immutable ordered candidate list as its `preferred_node_id`; it is in
 `0x01–0x7F`. `0x00` and CAN ID `0x280` are reserved.
 
 [Node claim](../messages/node-claim.md) owns its frame and payload contract.
-The frame and sender gate in the [wire profile](../profile.md) applies before
-claim decoding. This lifecycle defines when a node sends or acts on a valid
-claim; it does not create a second payload or message-validation contract.
+The selected profile's frame and sender gate in the
+[wire profile](../profile.md) applies before claim decoding. This lifecycle
+defines when a node sends or acts on a valid claim; it does not create a second
+payload or message-validation contract.
 
 ## Admission, candidates, and identity
 

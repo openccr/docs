@@ -3,24 +3,31 @@ Copyright (c) 2026 openCCR contributors
 
 # Rebus discovery
 
-## Scope and precedence
+## Scope and applicability
 
-This directory defines decentralized Rebus discovery: commissioned admission,
+This directory is non-normative navigation for decentralized Rebus discovery:
 node-claim lifecycle, ownership recovery, and UUID-to-node-ID identity
-resolution. The [wire profile](../profile.md) owns identifiers, frame format,
-transmission recovery, capacity, and commissioned admission. Unassigned control
-formats are listed in [open issues](../open-issues.md) and MUST NOT be guessed.
+resolution after commissioned physical admission. The [wire profile](../profile.md)
+owns profile selection, identifiers, frame format, transmission recovery,
+capacity, and commissioned admission; [wire encoding](../encoding.md) owns
+physical payload decoding.
 
-Discovery references message specifications for their payloads and
-message-specific validation; it does not redefine those contracts.
+The completed rules in [lifecycle.md](lifecycle.md) and
+[identity.md](identity.md) are **COMMON** logical rules after that owner path;
+they do not define a separate discovery physical profile. Their message links
+lead to the owners of payload shape and message-specific validation. Unassigned
+control formats remain unresolved in the [missing-functionality deny-list](../missing-functionality.md).
 
 ## Protocol orientation
 
-**Non-normative reading path:** start with commissioned admission and candidate
-selection in [lifecycle.md](lifecycle.md), follow its claim procedure through
-activation and recovery, then read [identity.md](identity.md) for identity
-queries, binding changes, and duplicate-UUID fault handling. Consult the message
-files named in each owner before encoding or accepting a frame.
+**Non-normative reading path:** begin with the commissioned selected-profile
+gate in [profile.md](../profile.md), then read [wire encoding](../encoding.md)
+for decoded physical payloads before following [lifecycle.md](lifecycle.md)
+through claim activation and recovery or [identity.md](identity.md) through
+identity queries, binding changes, and duplicate-UUID fault handling. The
+selected gate owns pre-dispatch rejection; after it, use the linked message
+owner for payload validation and the lifecycle or identity owner for state
+effects.
 
 ## File map
 
@@ -34,8 +41,8 @@ files named in each owner before encoding or accepting a frame.
 
 | Task | Required read set |
 |---|---|
-| Claim lifecycle | [profile](../profile.md), [discovery README](README.md), [lifecycle](lifecycle.md), [node claim](../messages/node-claim.md), [claim reject](../messages/claim-reject.md) |
-| Identity resolution | [profile](../profile.md), [discovery README](README.md), [identity](identity.md), [node claim](../messages/node-claim.md), [WHO_ARE_YOU](../messages/who-are-you.md), [UUID collision](../messages/uuid-collision.md) |
+| Claim lifecycle | [profile](../profile.md), [encoding](../encoding.md), [discovery README](README.md), [lifecycle](lifecycle.md), [node claim](../messages/node-claim.md), [claim reject](../messages/claim-reject.md) |
+| Identity resolution | [profile](../profile.md), [encoding](../encoding.md), [discovery README](README.md), [identity](identity.md), [node claim](../messages/node-claim.md), [WHO_ARE_YOU](../messages/who-are-you.md), [UUID collision](../messages/uuid-collision.md) |
 | Full discovery | [profile](../profile.md), [encoding](../encoding.md), [discovery README](README.md), [lifecycle](lifecycle.md), [identity](identity.md), [node claim](../messages/node-claim.md), [claim reject](../messages/claim-reject.md), [WHO_ARE_YOU](../messages/who-are-you.md), [UUID collision](../messages/uuid-collision.md) |
 
 ## Boundary warnings

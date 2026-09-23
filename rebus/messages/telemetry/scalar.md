@@ -2,10 +2,12 @@ SPDX-License-Identifier: CC-BY-4.0
 Copyright (c) 2026 openCCR contributors
 
 # Scalar telemetry
+**COMMON**
+
 
 ## Frame
 
-A scalar telemetry frame is an eight-byte payload that carries one current
+A scalar telemetry frame is an eight-decoded-byte payload that carries one current
 value from one logical publisher. Its fields separate stream identity, loss
 detection, value status, and value interpretation:
 
@@ -22,6 +24,32 @@ CAN payload while allowing the [context registry](registries.md#contexts) to
 choose the representation. The frame does not carry a unit or a manifest
 resource ID; the [inventory output descriptor](../inventory/model.md) supplies
 the publisher's meaning, unit, origin, and any structured shape.
+
+### Physical framing
+
+**COMMON**
+
+After the selected [profile frame gate](../../profile.md), a scalar frame uses
+exactly eight decoded bytes:
+
+#### Classic CAN
+
+**CLASSIC CAN**
+
+A scalar frame uses a Classic data frame with raw DLC 8.
+
+#### CAN FD
+
+**CAN FD**
+
+A scalar frame uses a CAN FD data frame with `FDF=1` and decoded length 8. The
+FD requirement is a decoded-length rule, not a raw-DLC-as-byte-count
+comparison. A receiver MUST discard an FD scalar frame of every other decoded
+length; it MUST NOT aggregate scalar samples or extend the fixed payload.
+
+#### Frame identity and profile validation
+
+**COMMON**
 
 Telemetry uses `CAN_ID = (0x07 << 7) | source_node_id` (`0x381–0x3FF`).
 `publisher_id` is an 8-bit node-local logical publisher. On the wire, stream

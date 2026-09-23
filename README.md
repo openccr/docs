@@ -23,11 +23,12 @@ docs/
 │   └── capabilities.md
 ├── rebus/         # Rebus inter-board CAN-bus protocol
 │   ├── profile.md       # Normative wire profile and frame rules
-│   ├── discovery.md     # Cooperative node claims, rejection, and recovery
+│   ├── discovery/      # Claim lifecycle and identity resolution
 │   ├── encoding.md      # Payload serialization and byte order
 │   ├── messages/        # Message layouts and registries
 │   ├── design-decisions.md
-│   └── open-issues.md
+│   ├── open-issues.md # Issues in completed Rebus rules
+│   └── missing-functionality.md # Referenced contracts awaiting definition
 └── licenses/
 ```
 

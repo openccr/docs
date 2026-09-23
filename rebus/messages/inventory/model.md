@@ -4,6 +4,8 @@ Copyright (c) 2026 openCCR contributors
 # Inventory model
 
 ## Resource model
+**COMMON**
+
 
 This document uses the [manifest envelope](envelope.md) for record and nested-TLV framing and the [inventory registries](registries.md) for assigned identifiers and registry validation.
 
@@ -79,10 +81,29 @@ The shape, dimension names, element type, element unit, and snapshot policy
 are part of the output descriptor. A matrix such as gas saturation is one
 logical output even when its wire representation spans multiple frames.
 
+### Structured output encoded length
+**COMMON**
+
 For a `STRUCTURED_SNAPSHOT` output, nested properties MUST include
-`encoded_length`, including the four-byte snapshot header, and the exact
-dimension sizes. The encoded length MUST be no greater than 1,020 bytes for
-the v0.1 structured snapshot transport.
+`encoded_length`, including the mandatory four-byte snapshot header, and the
+exact dimension sizes. The encoded length MUST be at least four bytes.
+
+#### Classic CAN
+**CLASSIC CAN**
+
+Under `REBUS_CLASSIC_0_1`, it MUST be no greater than 1,020 bytes.
+
+#### CAN FD
+**CAN FD**
+
+Under `REBUS_FD_0_1`, it MUST be no greater than `255 * (L - 4)` for the
+selected permitted decoded chunk length `L`, and never more than 15,300 bytes.
+
+### Output metadata, relations, and parameters
+**COMMON**
+
+These profile-specific transfer bounds do not alter the descriptor's shape,
+dimension names, element type, element unit, or snapshot policy.
 
 Each output MAY declare a [delivery class](registries.md#delivery-classes) and request policy:
 
@@ -160,6 +181,8 @@ value is represented and constrained. Configuration get/set messages and
 authorization are separate protocol work.
 
 ## Sensor output provenance
+**COMMON**
+
 
 A `GAS_CELL` resource may expose different combinations of raw, direct, and
 derived outputs:

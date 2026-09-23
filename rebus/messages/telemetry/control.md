@@ -2,6 +2,8 @@ SPDX-License-Identifier: CC-BY-4.0
 Copyright (c) 2026 openCCR contributors
 
 # Telemetry control
+**COMMON**
+
 
 Telemetry-control messages request a current value or a temporary higher
 cadence for one exact telemetry selector. They never request retransmission: a
@@ -21,6 +23,34 @@ A request uses `CAN_ID = (0x03 << 7) | requester_node_id`
 | 3 | 1 | `uint8_t` | `context` |
 | 4 | 2 | `uint16_t` | Requested period in milliseconds |
 | 6 | 2 | `uint16_t` | Requested duration in seconds |
+
+
+### Physical framing
+
+**COMMON**
+
+After the selected [profile frame gate](../../profile.md), every
+telemetry-control request is exactly eight decoded bytes:
+
+#### Classic CAN
+
+**CLASSIC CAN**
+
+A request uses a Classic data frame with raw DLC 8.
+
+#### CAN FD
+
+**CAN FD**
+
+A request uses a CAN FD data frame with `FDF=1` and decoded length 8. The FD
+rule compares decoded length after the [wire encoding](../../encoding.md)
+mapping, not raw DLC as a byte count. A source MUST discard every other FD
+decoded length; it MUST NOT aggregate requests or extend the fixed control
+layout.
+
+#### Request identity and validation
+
+**COMMON**
 
 All `uint16_t` fields are little-endian. The request target discards a frame
 unless the requester node ID is in `0x01–0x7F` and byte 1 equals its own

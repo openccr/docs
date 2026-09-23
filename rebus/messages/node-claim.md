@@ -3,7 +3,29 @@ Copyright (c) 2026 openCCR contributors
 
 # Node claim message
 
+## Physical framing
+**COMMON**
+
+The selected profile gate applies before node-claim validation. A node claim
+with a decoded length other than 8 is invalid in either profile. A receiver
+MUST discard an invalid physical form or decoded length without a protocol
+response.
+
+### Classic CAN
+**CLASSIC CAN**
+
+The raw DLC is 8 and the decoded length is 8.
+
+### CAN FD
+**CAN FD**
+
+`FDF=1` and the decoded length is 8. Spare CAN FD capacity MUST NOT extend
+this fixed v0.1 layout.
+
+
 ## Payload
+**COMMON**
+
 
 `rebus_msg_node_claim_t` is an 8-byte declared payload:
 

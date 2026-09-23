@@ -4,6 +4,7 @@ Copyright (c) 2026 openCCR contributors
 # WHO_ARE_YOU message
 
 ## Identifier and frame
+**COMMON**
 
 `WHO_ARE_YOU` is a discovery identity query. It uses the class-`0x4` range,
 which is separate from class `0x2` because `CLAIM_REJECT` uses an
@@ -14,11 +15,27 @@ undiscriminated eight-byte UUID payload.
 | Specific | `(0x04 << 7) \| target_node_id` (`0x201–0x27F`) | Ask the active owner of one node ID |
 | Broadcast | `0x200` | Ask every active node; low ID `0x00` is a query-only exception |
 
-Every query is a Classic CAN 2.0A base-format data frame with raw DLC 8 and
-exactly eight data bytes. `0x00` remains invalid as a node assignment, source
-ID, or unicast destination. No other class-`0x4` payload is assigned in v0.1.
+Every query is processed after the selected profile gate. A query with a
+decoded length other than 8 is invalid in either profile. `0x00` remains
+invalid as a node assignment, source ID, or unicast destination. No other
+class-`0x4` payload is assigned in v0.1.
+
+### Classic CAN
+**CLASSIC CAN**
+
+The raw DLC is 8 and the decoded length is 8.
+
+### CAN FD
+**CAN FD**
+
+`FDF=1` and the decoded length is 8. Spare CAN FD capacity MUST NOT extend
+this fixed v0.1 layout.
+
+
 
 ## Payload
+**COMMON**
+
 
 `rebus_msg_who_are_you_t` is an eight-byte declared payload:
 
@@ -42,10 +59,12 @@ queried node ID. Multi-byte fields are absent; the payload still follows the
 fixed-width [wire encoding](../encoding.md) and frame gate.
 
 A receiver MUST discard a query with an invalid message type, requester ID,
-nonzero reserved bytes, non-Classic-CAN frame form, or raw DLC other than 8.
+nonzero reserved bytes, invalid physical form, or decoded length other than 8.
 Invalid queries receive no response.
 
 ## Response
+**COMMON**
+
 
 For an accepted query, response selection, timing, and identity-reminder
 semantics are defined by the [discovery identity

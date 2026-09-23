@@ -8,17 +8,59 @@ Copyright (c) 2026 openCCR contributors
 This document owns normative profile decisions. Profile rules take precedence
 over source headers and explanatory text elsewhere in the Rebus documents.
 
-## Status
+## Commissioned physical profiles
+**COMMON**
+
+Rebus v0.1 has one logical protocol and exactly two commissioned,
+non-interoperable physical profiles. A deployment selects one profile only as a
+build-time or commissioning-time property. A receiver MUST obtain that
+selection from trusted local configuration before decoding, independently of
+whether its UUID has a valid admission record; it MUST NOT infer a profile
+from traffic. Without a local profile selection it MUST NOT dispatch Rebus
+frames.
+The selected profile gates physical admission and capacity only; it does not
+alter identifier allocation, logical message semantics, identity state, or
+manifest state.
+
+Before dispatch, a receiver MUST apply the selected profile's physical gate,
+then the message's actual decoded-length rule, and only then the current
+message, identity, manifest, and descriptor validation. Missing, malformed,
+wrong-profile, reserved, or internally inconsistent physical metadata or
+payload MUST be discarded without a protocol response. ESI is diagnostic only
+and MUST NOT admit, reject, or otherwise reinterpret a frame.
+Each profile MUST reject the other profile's frames before Rebus dispatch.
+
+### Common status
+**COMMON**
 
 ```text
 Wire profile:       Rebus v0.1
-CAN mode:           Classic CAN 2.0A base-format data frames only
-Nominal bit rates:  125, 250, 500, or 1,000 kbit/s
 Payload octet order: little-endian (CAN data bits: MSB-first)
 Node IDs:           0x01–0x7F unicast; 0x00 reserved/unassigned
 ```
 
+### `REBUS_CLASSIC_0_1`
+**CLASSIC CAN**
+
+```text
+IDE=0, RTR=0, FDF=0/not-applicable, raw DLC=8, decoded length=8.
+```
+
+`REBUS_CLASSIC_0_1` accepts only Classic CAN 2.0A base-format data frames.
+
+### `REBUS_FD_0_1`
+**CAN FD**
+
+```text
+IDE=0, RTR=0, FDF=1, commissioned uniform BRS,
+raw DLC=0..15, decoded length from encoding.md.
+```
+
+`REBUS_FD_0_1` accepts only base-format, non-remote CAN FD data frames whose
+BRS state matches its commissioned uniform policy.
+
 ## Standard identifier classes
+**COMMON**
 
 Every assigned Rebus identifier is an 11-bit base identifier. Unless a message
 rule explicitly names a subject rather than a sender, it is
@@ -52,7 +94,7 @@ broadcast. `UUID_COLLISION` is bus-wide and has no target. Manifest
 advertisements, transfer starts, chunks, scalar telemetry, and structured
 snapshot chunks use the low seven bits as the source node ID.
 
-| Message | CAN identifier | DLC | Payload |
+| Message | CAN identifier | Decoded length | Payload |
 |---|---:|---:|---|
 | Node claim | `(0x05 << 7) | requested_node_id` | 8 | UUID |
 | Claim rejection | `(0x02 << 7) | rejected_node_id` | 8 | Target UUID |
@@ -61,9 +103,9 @@ snapshot chunks use the low seven bits as the source node ID.
 | Identity query | `0x200` broadcast or `(0x04 << 7) | target_node_id` | 8 | Query type, requester, zero reserved bytes |
 | Manifest advertise | `(0x06 << 7) | source_node_id` | 8 | Format, revision, manifest fingerprint |
 | Manifest transfer start | `(0x06 << 7) | source_node_id` | 8 | Transfer ID, revision, manifest fingerprint |
-| Manifest chunk | `(0x06 << 7) | source_node_id` | 8 | Transfer ID, chunk index, four data bytes |
+| Manifest chunk | `(0x06 << 7) | source_node_id` | profile-specific | Transfer ID, chunk index, profile data area |
 | Scalar telemetry | `(0x07 << 7) | source_node_id` | 8 | Publisher, sequence, status, context, value |
-| Structured snapshot chunk | `(0x08 << 7) | source_node_id` | 8 | Publisher, snapshot sequence, chunk index, chunk count, four data bytes |
+| Structured snapshot chunk | `(0x08 << 7) | source_node_id` | profile-specific | Publisher, snapshot sequence, chunk index, chunk count, profile data area |
 | Telemetry control request | `(0x03 << 7) | requester_node_id` | 8 | Telemetry control request |
 
 `CLAIM_REJECT` is a discovery-control message for the identifier in its low
@@ -80,12 +122,11 @@ NOT use a reserved range.
 
 
 ## Frame and sender invariants
+**COMMON**
 
-- A sender MUST emit a Classic CAN base-format data frame: `IDE=0`, `RTR=0`,
-  raw DLC `8`, and exactly eight data bytes. CAN FD (`FDF=1`), BRS, and ESI
-  are prohibited. A receiver MUST discard a frame that fails any of those
-  checks before Rebus dispatch, without a protocol response or remote-frame
-  responder.
+- A sender MUST emit a data frame that satisfies the selected profile's gate.
+  A receiver MUST discard a frame that fails that gate before Rebus dispatch,
+  without a protocol response or remote-frame responder.
 - Multi-octet payload values use little-endian octet order. CAN serializes bit
   7 through bit 0 of each octet; byte order does not reverse physical bits.
 - `0x00` MUST NOT be a requested, source, or unicast destination node ID. The
@@ -139,6 +180,7 @@ binding exists. The matching manifest cache remains valid only when both
 identity fields are unchanged.
 
 ## CAN transmission and recovery
+**COMMON**
 
 Normal traffic uses controller automatic retransmission as one logical
 emission. A node claim is the exception: its driver must disable automatic
@@ -151,36 +193,98 @@ suppresses normal Rebus traffic and restarts its five-claim procedure at ordinal
 one. A controller lacking these controls is not conformant for claims.
 
 ## Commissioned bootstrap admission
+**COMMON**
 
 Before a session, commissioning must install a write-protected record bound to
-each admitted UUID containing profile revision, bit rate, calculated `N_max`,
-and an immutable ordered nonempty list of distinct candidate IDs in ascending
-order within `0x01–0x7F`. A node validates that record locally before selecting
-a candidate. An absent, corrupt, mismatched, or duplicated record leaves it a
-passive listener; CAN traffic never grants admission.
+each admitted UUID. The record MUST contain the selected physical profile,
+nominal bit rate, commissioned BRS policy, calculated `N_max`, and the timing
+inputs used to calculate it.
+
+The admission record also contains an immutable ordered nonempty list of distinct candidate
+IDs in ascending order within `0x01–0x7F`. A node validates that record locally
+before selecting a candidate. An absent, corrupt, mismatched, or duplicated
+admission record prevents transmission and leaves the node passive; CAN traffic
+never grants admission. A passive node with an independently configured
+selected profile MAY receive through that profile gate; lacking a selected
+profile, it cannot decode Rebus traffic.
+
+### Classic CAN
+**CLASSIC CAN**
+
+The Classic record inherits the common fields and has no additional
+Classic-specific field.
+
+### CAN FD
+**CAN FD**
+
+An FD record additionally contains its data bit rate.
 
 ## Discovery capacity
+**COMMON**
 
 Only nodes with a valid commissioned admission record may be bootstrap-active;
 all other nodes are passive listeners. The record, not CAN traffic, determines
-admission. A deployment MUST admit no more bootstrap-active nodes than the
-limit below.
-A claimant MUST submit no more than one claim during each local 500-ms
-throttle interval while pursuing a candidate. After losing a candidate, its
-first claim for the next candidate MUST NOT occur earlier than 100 ms after the
-loss. Each first claim may generate one rejection.
+admission. A deployment MUST admit no more bootstrap-active nodes than its
+selected profile's limit below. The claim lifecycle retains its local nominal
+500-ms throttle and 100-ms post-loss rule; the capacity calculation does not
+create a common epoch, slot offset, or synchronized claim schedule.
+
+For either profile, `c_profile` is the commissioned worst-case elapsed cost in
+seconds of one discovery wire-cost unit, and:
+
+```text
+N_max = floor(0.25 / (20 * c_profile)).
+```
+
+### `REBUS_CLASSIC_0_1` capacity
+**CLASSIC CAN**
 
 A DLC-8 standard Classic CAN frame is budgeted at 135 bus bits including
 maximum stuffing and intermission. One bounded error/recovery episode is 287
-bits. Discovery consumes at most 25% of nominal capacity:
-`N_max = floor((0.25 * bitrate) / (20 * 287))`.
+bits. Therefore `c_classic = 287 / nominal_bitrate`, preserving:
 
-| Bit rate | `N_max` |
+```text
+N_max = floor((0.25 * nominal_bitrate) / (20 * 287)).
+```
+
+| Nominal bit rate | `N_max` |
 |---:|---:|
 | 125 kbit/s | 5 |
 | 250 kbit/s | 10 |
 | 500 kbit/s | 21 |
 | 1 Mbit/s | 43 |
 
+### `REBUS_FD_0_1` capacity
+**CAN FD**
+
+Commissioning MUST calculate `c_fd(frame)` for every assigned discovery wire
+form: `NODE_CLAIM`, `CLAIM_REJECT`, broadcast and unicast `WHO_ARE_YOU`,
+and `UUID_COLLISION`. It MUST NOT omit an active-owner response or identity
+diagnostic because its emission is conditional. For each form, the recorded
+worst-case bit count MUST cover arbitration and data phases, the commissioned
+BRS policy, maximum dynamic and fixed stuffing, the applicable FD CRC and
+delimiter, ACK and end-of-frame bits, and intermission. The bounded
+error/recovery allowance MUST cover one failed attempt at the most expensive
+error point, error signaling and recovery, and one successful transmission;
+using that allowance for one-shot claims is a conservative cost bound, not
+permission to retransmit a failed claim automatically. Commissioning MUST
+record the bit counts and recovery allowance per form so its maximum can be
+reproduced. Nominal-phase bits use the commissioned nominal rate; data-phase
+bits use the commissioned data rate only when the BRS policy uses it:
+
+```text
+c_fd(frame) =
+    nominal_phase_cost(frame, stuffing, intermission, bounded_recovery)
+        / nominal_bitrate
+  + data_phase_cost(frame, BRS policy, stuffing, FD CRC, bounded_recovery)
+        / selected_data_phase_bitrate.
+
+c_fd_profile = max(c_fd(frame) for all assigned discovery wire forms).
+```
+
+With BRS disabled, `selected_data_phase_bitrate` is the nominal bit rate.
+Commissioning MUST record the resulting `c_fd_profile` and use it as
+`c_profile` in the common `N_max` calculation. If a form's worst-case cost
+cannot be bounded, commissioning MUST NOT admit bootstrap-active nodes.
 Continuous higher-priority traffic, repeated errors, or bus-off void the
 bootstrap-time bound; they never authorize an abbreviated state transition.
