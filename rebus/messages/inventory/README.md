@@ -62,3 +62,14 @@ is non-normative and assigns no profile behavior.
 For human reference, read [transport](transport.md) → [envelope](envelope.md) → [model](model.md) → [registries](registries.md) → [authoring](authoring.md).
 
 This README is navigation, not a substitute for normative rules.
+
+~~~{toctree}
+:hidden:
+:maxdepth: 1
+
+transport
+envelope
+model
+registries
+authoring
+~~~

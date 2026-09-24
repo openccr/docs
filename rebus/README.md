@@ -55,3 +55,25 @@ supersedes only conflicting original source declarations within its own scope.
 Items in [missing functionality](missing-functionality.md) remain undefined and
 are not defaults; [defined-rule issues](open-issues.md) identify problems in
 rules that have already been stated.
+
+~~~{toctree}
+:hidden:
+:maxdepth: 4
+:caption: Protocol specification
+
+profile
+encoding
+discovery/README
+messages/README
+~~~
+
+~~~{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Guidance and status
+
+AGENTS
+design-decisions
+open-issues
+missing-functionality
+~~~

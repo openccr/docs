@@ -63,3 +63,11 @@ see [inventory transport](../messages/inventory/transport.md) and
 [scalar telemetry](../messages/telemetry/scalar.md).
 
 This README is navigation, not a substitute for normative rules.
+
+~~~{toctree}
+:hidden:
+:maxdepth: 1
+
+lifecycle
+identity
+~~~

@@ -48,3 +48,15 @@ Node claims, collision diagnostics, and rejection participate in the
 decentralized procedure described in [discovery](../discovery/README.md). Session
 reset remains an unassigned control message; it must not alter the node-claim
 payload.
+
+~~~{toctree}
+:hidden:
+:maxdepth: 3
+
+node-claim
+claim-reject
+who-are-you
+uuid-collision
+inventory/README
+telemetry/README
+~~~

@@ -77,3 +77,14 @@ For human reference, read [scalar](scalar.md) â†’ [structured](structured.md) â†
 [subscriptions](subscriptions.md).
 
 This README is navigation, not a substitute for normative rules.
+
+~~~{toctree}
+:hidden:
+:maxdepth: 1
+
+scalar
+structured
+registries
+control
+subscriptions
+~~~
